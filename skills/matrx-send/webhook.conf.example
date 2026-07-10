@@ -1,0 +1,3 @@
+# 复制本文件为 webhook.conf 并填入真实 Matrx 群机器人 webhook 地址。
+# 该地址等于密钥,任何人拿到都能往群里发消息,勿泄露。
+MATRX_WEBHOOK_URL=https://<open-api-host>/open-apis/bot/v1/webhook/<token>

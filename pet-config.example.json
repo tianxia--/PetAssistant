@@ -1,0 +1,16 @@
+{
+  "_说明": "复制本文件为 pet-config.json 并填入真实值。format 支持 openai / anthropic。也可在宠物 ⚙️ 面板里配置。",
+  "models": [
+    {
+      "name": "示例模型",
+      "format": "openai",
+      "model": "模型ID(如 gpt-4o 或 /model/xxx)",
+      "baseURL": "https://your-endpoint/v1",
+      "apiKey": "填你的 API Key"
+    }
+  ],
+  "active": "示例模型",
+  "theme": "origin",
+  "petName": "",
+  "parts": { "horns": "pointed" }
+}

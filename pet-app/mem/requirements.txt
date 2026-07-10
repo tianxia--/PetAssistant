@@ -1,0 +1,5 @@
+# 二蛋向量记忆服务依赖(本地、无 torch)。重建 venv:
+#   cd pet-app && python3 -m venv mem/.venv && mem/.venv/bin/pip install -r mem/requirements.txt
+# 首次运行会自动下载中英双语 embedding 模型 jinaai/jina-embeddings-v2-base-zh(~0.64GB)。
+zvec
+fastembed

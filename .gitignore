@@ -1,0 +1,30 @@
+# 编译产物
+pet-app/.build/
+*.o
+.DS_Store
+
+# 密钥 / 私密配置(用 .example 文件说明格式,真实值不入库)
+pet-config.json
+skills/matrx-send/webhook.conf
+
+# 可再生的大文件 / 运行时状态
+skills/branch-report/data/cache/
+skills/branch-report/data/state/
+pet-data/reminders.json
+
+# 向量记忆:venv(~210MB)、索引、聊天日志 —— 都可再生,不入库
+pet-app/mem/.venv/
+pet-app/mem/index/
+pet-app/mem/index_manifest.json
+pet-data/chat.log
+
+# 工具配置 / 运行时标记(机器本地、可再生)
+.claude/
+pet-data/.daily-report-last
+
+# 个人数据 / 私有配置 —— 用 .example 种子文件说明格式,真实内容不入库
+pet-data/about-you.md
+pet-data/tasks.md
+pet-data/inbox.md
+pet-data/daily/*.md
+skills/branch-report/data/repos.txt

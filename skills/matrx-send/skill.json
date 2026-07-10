@@ -1,0 +1,6 @@
+{
+  "name": "send_matrx",
+  "description": "给用户的 Matrx 群发一条文本消息。用户说'发到群里/告诉大家/发个通知'时用。",
+  "args": { "text": "要发送的消息正文(纯文本)" },
+  "run": "run.py"
+}

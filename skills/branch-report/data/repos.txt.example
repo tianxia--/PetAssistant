@@ -1,0 +1,7 @@
+# Branch-report projects — 每行一个 GitLab 仓库。
+# 粘贴你要跟踪的仓库 clone 地址(HTTPS 或 SSH)。# 开头的行会被忽略。
+# 可选友好名:  myname = https://gitlab.example.com/group/repo.git
+#
+# 示例(改成你自己的):
+# app-ios     = https://gitlab.example.com/team/app-ios.git
+# app-android = https://gitlab.example.com/team/app-android.git
