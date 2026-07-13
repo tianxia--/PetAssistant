@@ -74,6 +74,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     var baseY: CGFloat = 0
     var snapPending = false        // 拖动结束后,下一帧吸附到最近的边
     var paused = false
+    var hovering = false                    // 用户主动把鼠标滑到宠物身上:停下来问一句
+    var prevMouse: NSPoint? = nil           // 上一次采样的鼠标位置(判断鼠标是否在"主动移动")
+    var lastMouseMoveAt = Date.distantPast
     var uiOpen = false
     var skills: [PetSkill] = []
     var dragPauseUntil = Date.distantPast
@@ -84,7 +87,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     let MEM_PORT = 8790
     struct Attachment { let name: String; let isImage: Bool; let text: String; let dataURL: String }
     var pendingAttach: Attachment?                 // 待发送的附件(📎选择或拖入,随下一条消息带上)
-    let idleSize = NSSize(width: 170, height: 210)   // 待机:只有小龙
+    let idleSize = NSSize(width: 170, height: 272)   // 待机:只有小龙(顶部留出气泡空间)
     let chatSize = NSSize(width: 288, height: 366)   // 对话:聊天卡片
     var chatMode = false
 
@@ -131,6 +134,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         let inWindow = m.x >= f.minX && m.x <= f.maxX && m.y >= f.minY && m.y <= f.maxY
         let interactive = uiOpen || chatMode || inWindow
         if window.ignoresMouseEvents == interactive { window.ignoresMouseEvents = !interactive }
+
+        // 鼠标是否"正在被用户主动移动"
+        if let p = prevMouse, hypot(m.x - p.x, m.y - p.y) > 1.5 { lastMouseMoveAt = Date() }
+        prevMouse = m
+        let mouseMoving = Date().timeIntervalSince(lastMouseMoveAt) < 0.25
+
+        // hover 判定只用"龙的身体范围"(待机时龙居中贴底 ~132×145),不含顶部给气泡留的空白,
+        // 否则鼠标在窗口空白处也会被当成"在他身上"。
+        let bw: CGFloat = 132, bh: CGFloat = 145
+        let onBody = !chatMode && NSRect(x: f.midX - bw / 2, y: f.minY, width: bw, height: bh).contains(m)
+
+        // 只有"用户主动把鼠标滑到它身上(鼠标在动)"才停下来问一句;
+        // 宠物自己走到一个静止的鼠标上不会停 —— 那种由 tick() 里的绕路把它抬起来跨过去。
+        if !chatMode && !uiOpen && Date() >= dragPauseUntil && onBody {
+            if !hovering && mouseMoving { hovering = true; setMotion(.idle); send(["type": "hover", "on": true]) }
+        } else if hovering {
+            hovering = false; send(["type": "hover", "on": false])
+        }
     }
 
     // 页面加载完成后,直接把插画和动画引擎注入 DOM(不走 file:// fetch)
@@ -161,7 +182,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
     func tick(_ dt: TimeInterval) {
         guard let screen = NSScreen.main else { return }
-        if paused || Date() < dragPauseUntil { if motion != .idle { setMotion(.idle) }; return }
+        if paused || hovering || Date() < dragPauseUntil { if motion != .idle { setMotion(.idle) }; return }
         if snapPending { snapToBottom(); snapPending = false }
         stateRemain -= dt
         if stateRemain <= 0 { chooseNext() }
@@ -174,7 +195,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             if frame.origin.x <= minX { frame.origin.x = minX; dir = -1; notifyMotion() }   // 撞左墙 → 镜像掉头朝右
             if frame.origin.x >= maxX { frame.origin.x = maxX; dir = 1; notifyMotion() }     // 撞右墙 → 镜像掉头朝左
         }
-        frame.origin.y = baseY                                // 始终贴底边
+        frame.origin.y = baseY                                // 默认贴底边
+        // 绕路:走路时鼠标挡在前方地面 → 身体沿弧线抬高,从上方跨过去(不停,过了就落回)
+        if speed > 0 {
+            let mouse = NSEvent.mouseLocation
+            if mouse.y <= baseY + 150 {                       // 鼠标在贴地的行走带里才算障碍
+                let dx = abs(frame.midX - mouse.x)
+                let R: CGFloat = 130, maxLift: CGFloat = 90
+                if dx < R {
+                    let t = Double(dx / R)
+                    frame.origin.y = baseY + maxLift * CGFloat(0.5 + 0.5 * cos(Double.pi * t))
+                }
+            }
+        }
         window.setFrame(frame, display: true)
     }
     func chooseNext() {

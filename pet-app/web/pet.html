@@ -21,7 +21,7 @@
   body.chat #hit { display: none; }
 
   /* ---------- 待机气泡 ---------- */
-  #bubble { position: absolute; left: 50%; bottom: 140px; transform: translateX(-50%) translateY(8px) scale(.92);
+  #bubble { position: absolute; left: 50%; bottom: 180px; transform: translateX(-50%) translateY(8px) scale(.92);
     max-width: 154px; min-width: 50px; z-index: 4; background: #fffdf7; border: 2px solid #f2994c; border-radius: 14px;
     padding: 8px 11px; font-size: 12px; line-height: 1.5; color: #4a3428; box-shadow: 0 4px 12px rgba(0,0,0,.14);
     opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s cubic-bezier(.34,1.56,.64,1); }
@@ -277,6 +277,11 @@
         case 'attachError': clearChip(); if (body.classList.contains('chat')) addMsg('pet', msg.text || '这个文件我读不了'); else showBubble(msg.text || '这个文件我读不了', {}); break;
         case 'motion': if (!sleeping && D()) D().setMotion(msg.state, msg.dir); break;
         case 'config': config = msg; renderModels(); if (msg.theme) applyTheme(msg.theme); applyParts(msg.parts); if (msg.petName !== undefined) setPetName(msg.petName); break;
+        case 'hover':
+          if (sleeping || body.classList.contains('chat')) break;
+          if (msg.on) showBubble('嗯?是不是有什么事~ 点我说说 ✨', { ttl: 0 });
+          else hideBubble();
+          break;
       }
     };
 
