@@ -48,7 +48,7 @@ Then open the dragon → ⚙️ Settings:
 |------|---------|
 | `pet-app/` | The pet app (Swift + WebView): `Sources/` brain, `web/` UI & animation, `mem/` vector memory |
 | `pet-data/` | Its memory (**your private data, git-ignored**): `inbox.md`, `tasks.md`, `about-you.md`, `daily/` |
-| `skills/` | Extensible skills: branch report, group messaging, etc. (Claude Agent Skills format — one `SKILL.md` per folder, drop in & restart) |
+| `skills/` | Extensible skills: branch report, group messaging, tech-news aggregation, WeChat send/receive, etc. (Claude Agent Skills format — one `SKILL.md` per folder, drop in & restart) |
 | `CLAUDE.md` | Persona & behavior rules |
 | `docs/` | Design docs & project map |
 | `*.example.*` | Seed/example files; your local files are generated from these on first run |

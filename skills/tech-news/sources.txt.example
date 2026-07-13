@@ -1,0 +1,9 @@
+# 科技资讯 RSS 源。每行:名字 | RSS地址。# 开头为注释。
+# 复制本文件为 sources.txt 并按需增删(首次启动会自动生成)。
+# 挑访问得通的源即可;抓不到的会在输出里标注失败,不影响其它源。
+Lobsters | https://lobste.rs/rss
+Dev.to | https://dev.to/feed
+TechCrunch | https://techcrunch.com/feed/
+The Verge | https://www.theverge.com/rss/index.xml
+TLDR AI | https://tldr.tech/ai/rss
+BBC News | http://feeds.bbci.co.uk/news/rss.xml

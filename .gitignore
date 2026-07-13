@@ -2,10 +2,14 @@
 pet-app/.build/
 *.o
 .DS_Store
+__pycache__/
+*.pyc
 
 # 密钥 / 私密配置(用 .example 文件说明格式,真实值不入库)
 pet-config.json
 skills/matrx-send/webhook.conf
+skills/wechat/wechat.conf
+skills/wechat/updates.buf
 
 # 可再生的大文件 / 运行时状态
 skills/branch-report/data/cache/
@@ -28,3 +32,4 @@ pet-data/tasks.md
 pet-data/inbox.md
 pet-data/daily/*.md
 skills/branch-report/data/repos.txt
+skills/tech-news/sources.txt

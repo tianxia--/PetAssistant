@@ -9,6 +9,7 @@ seed pet-data/about-you.example.md            pet-data/about-you.md
 seed pet-data/tasks.example.md                pet-data/tasks.md
 seed pet-data/inbox.example.md                pet-data/inbox.md
 seed skills/branch-report/data/repos.txt.example skills/branch-report/data/repos.txt
+seed skills/tech-news/sources.txt.example     skills/tech-news/sources.txt
 seed pet-config.example.json                  pet-config.json
 
 pkill -x ErDanPet 2>/dev/null

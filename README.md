@@ -48,7 +48,7 @@ mem/.venv/bin/pip install -r mem/requirements.txt
 |------|------|
 | `pet-app/` | 桌宠 App(Swift + WebView):`Sources/` 大脑、`web/` 界面与动画、`mem/` 向量记忆 |
 | `pet-data/` | 它的记忆(**你的私有数据,不入库**):`inbox.md`、`tasks.md`、`about-you.md`、`daily/` |
-| `skills/` | 可扩展技能:分支日报、群消息推送等(对齐 Claude Agent Skills,每个子目录一个 `SKILL.md`,丢进来重启即用) |
+| `skills/` | 可扩展技能:分支日报、群消息推送、科技资讯抓取、微信收发等(对齐 Claude Agent Skills,每个子目录一个 `SKILL.md`,丢进来重启即用) |
 | `CLAUDE.md` | 人格与行为准则 |
 | `docs/` | 需求与设计、项目地图 |
 | `*.example.*` | 种子/示例文件,首次运行据此生成你的本地文件 |
