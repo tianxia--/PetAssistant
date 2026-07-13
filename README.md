@@ -43,6 +43,27 @@ mem/.venv/bin/pip install -r mem/requirements.txt
 
 > 也可以在本目录开 Claude Code 会话来驱动它(`cd ~/Desktop/PetAssistant && claude`)。
 
+## 内置技能 & 使用流程
+
+技能都在 `skills/`,对齐 [Claude Agent Skills](https://docs.claude.com/en/docs/claude-code/skills)(每个子目录一个 `SKILL.md`)。想用就留着,不用删文件夹即可;从 Claude / 网上拿的标准技能丢进来重启也能用。
+
+### 📰 科技资讯(tech-news)
+对二蛋说「看看今天科技圈有啥」,它就抓 **Hacker News** + 你在 `skills/tech-news/sources.txt` 配置的 **RSS 源**,整理成摘要(纯本地、无需 API Key):
+
+![tech-news](docs/screenshots/tech-news.png)
+
+### 💬 微信收发(wechat,双向)
+基于微信 iLink Bot 协议,能发也能收。先在终端**扫码登录一次**(建议用小号,非官方通道有封号风险):
+```bash
+cd ~/Desktop/PetAssistant
+echo '{"action":"login"}' | python3 skills/wechat/run.py   # 打开输出的链接,手机微信扫码
+```
+登录后凭证存 `skills/wechat/wechat.conf`(不入库)。之后就能让二蛋发/收微信:
+
+![wechat](docs/screenshots/wechat.png)
+
+> 目前「收消息」是拉一次(`action=receive`);常驻自动监听在路线图里。
+
 ## 目录结构
 | 路径 | 作用 |
 |------|------|

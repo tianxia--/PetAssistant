@@ -43,6 +43,27 @@ Then open the dragon → ⚙️ Settings:
 
 > You can also drive it from a Claude Code session in this folder (`cd ~/Desktop/PetAssistant && claude`).
 
+## Built-in skills & usage
+
+Skills live in `skills/`, aligned with [Claude Agent Skills](https://docs.claude.com/en/docs/claude-code/skills) (one `SKILL.md` per folder). Keep the ones you want, delete the folders you don't; standard skills from Claude or the web work when dropped in and restarted.
+
+### 📰 Tech news (tech-news)
+Say "show me today's tech news" and it fetches **Hacker News** + the **RSS feeds** you list in `skills/tech-news/sources.txt`, then formats a digest (fully local, no API key):
+
+![tech-news](docs/screenshots/tech-news.png)
+
+### 💬 WeChat send/receive (wechat, bidirectional)
+Built on WeChat's iLink Bot protocol — sends and receives. Log in **once via QR** in the terminal (use a secondary account; this is an unofficial channel with ban risk):
+```bash
+cd ~/Desktop/PetAssistant
+echo '{"action":"login"}' | python3 skills/wechat/run.py   # open the printed link, scan with WeChat
+```
+Credentials are saved to `skills/wechat/wechat.conf` (git-ignored). Then the pet can send/receive WeChat messages:
+
+![wechat](docs/screenshots/wechat.png)
+
+> Receiving is currently pull-once (`action=receive`); a resident auto-listener is on the roadmap.
+
 ## Layout
 | Path | Purpose |
 |------|---------|
