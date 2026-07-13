@@ -48,6 +48,14 @@
   .msg.pet { align-self: flex-start; background: #f3ede2; color: #4a3428; border-bottom-left-radius: 4px; }
   .msg.pet.typing::after { content: "·"; animation: dots 1.2s steps(4) infinite; }
   @keyframes dots { 0%{content:""} 25%{content:"·"} 50%{content:"··"} 75%{content:"···"} }
+  /* Markdown 渲染(宠物回复 / 气泡) */
+  .md > div + div { margin-top: 3px; }
+  .md ul, .md ol { margin: 3px 0; padding-left: 18px; }
+  .md li { margin: 1px 0; }
+  .md .mdh { font-weight: 700; margin: 4px 0 1px; }
+  .md code { background: rgba(0,0,0,.08); padding: 0 3px; border-radius: 4px; font-size: .92em; }
+  .md a { color: inherit; text-decoration: underline; }
+  .msg.me .md code { background: rgba(255,255,255,.25); }
 
   #inputrow { flex: 0 0 auto; display: flex; gap: 6px; padding: 8px; border-top: 1.5px solid #f5e2c4; }
   #chatinput { flex: 1; min-width: 0; border: 2px solid #eda56b; border-radius: 13px; padding: 7px 11px; font-size: 13px; outline: none;
@@ -275,7 +283,7 @@
     /* ---------- 待机气泡 ---------- */
     function showBubble(text, opts = {}) {
       clearTimeout(bubbleTimer); bubble.innerHTML = '';
-      const p = document.createElement('div'); p.textContent = text; bubble.appendChild(p);
+      const p = document.createElement('div'); p.className = 'md'; p.innerHTML = renderMD(text); bubble.appendChild(p);
       if (opts.actions) {
         const row = document.createElement('div'); row.className = 'actions';
         for (const a of opts.actions) { const b = document.createElement('button'); b.textContent = a.label; if (a.primary) b.className = 'primary';
@@ -287,9 +295,37 @@
     }
     function hideBubble() { bubble.classList.remove('show'); }
 
+    /* ---------- 轻量 Markdown 渲染(先转义 HTML,再套标记,防注入) ---------- */
+    function escapeHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function renderInline(s) {
+      s = escapeHtml(s);
+      s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+      s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      s = s.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+      s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+      return s;
+    }
+    function renderMD(text) {
+      const lines = String(text).replace(/\r\n/g, '\n').split('\n');
+      let html = '', list = null, m;
+      const close = () => { if (list) { html += '</' + list + '>'; list = null; } };
+      for (const raw of lines) {
+        const line = raw.replace(/\s+$/, '');
+        if (!line.trim()) { close(); continue; }
+        if ((m = line.match(/^\s{0,3}(#{1,6})\s+(.*)$/))) { close(); html += '<div class="mdh">' + renderInline(m[2]) + '</div>'; }
+        else if ((m = line.match(/^\s*[-*+]\s+(.*)$/))) { if (list !== 'ul') { close(); html += '<ul>'; list = 'ul'; } html += '<li>' + renderInline(m[1]) + '</li>'; }
+        else if ((m = line.match(/^\s*\d+\.\s+(.*)$/))) { if (list !== 'ol') { close(); html += '<ol>'; list = 'ol'; } html += '<li>' + renderInline(m[1]) + '</li>'; }
+        else { close(); html += '<div>' + renderInline(line) + '</div>'; }
+      }
+      close();
+      return html;
+    }
+
     /* ---------- 消息 ---------- */
     function addMsg(who, text) {
-      const d = document.createElement('div'); d.className = 'msg ' + who; d.textContent = text;
+      const d = document.createElement('div'); d.className = 'msg ' + who;
+      if (who.indexOf('pet') === 0 && text) { d.classList.add('md'); d.innerHTML = renderMD(text); }
+      else d.textContent = text;
       messages.appendChild(d); messages.scrollTop = messages.scrollHeight; return d;
     }
     let typingEl = null;
