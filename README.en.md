@@ -17,7 +17,7 @@
 ![horns](docs/screenshots/horns.png)
 
 ## Features
-- **Desktop pet**: paces along the screen edge, idle gestures, theme recoloring, swappable dragon horns
+- **Desktop pet**: paces along the screen edge, idle gestures, theme recoloring, swappable dragon horns; slide your cursor onto it and it stops to ask "what's up?", and it arcs over a resting cursor in its path
 - **Chat brain**: plug in your own LLM (OpenAI / Anthropic API format), with multi-turn context; replies render as Markdown
 - **Memory**: local vector memory (bilingual CN/EN, hybrid semantic + keyword search) that learns you over time
 - **File analysis**: documents (pdf / word / txt / code / logs) and images (screenshots) via 📎 picker / drag-drop / Cmd+V paste
