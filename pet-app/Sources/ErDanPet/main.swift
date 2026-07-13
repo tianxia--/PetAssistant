@@ -14,12 +14,13 @@ let dailyDir = petHome.appendingPathComponent("pet-data/daily")
 let configFile = petHome.appendingPathComponent("pet-config.json")
 let remindersFile = petHome.appendingPathComponent("pet-data/reminders.json")
 let reportsDir = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Desktop/BranchReports")
-let skillsDir = petHome.appendingPathComponent("skills")   // 动态 skill:每个子目录一个 skill.json + 脚本
+let skillsDir = petHome.appendingPathComponent("skills")   // 动态 skill:每个子目录一个 SKILL.md(对齐 Claude Agent Skills)
 
 let MAX_AGENT_STEPS = 7
 
-// 一个动态 skill(来自 skills/<name>/skill.json)
-struct PetSkill { let name: String; let desc: String; let args: [String: String]; let runPath: String; let dir: String }
+// 一个动态 skill(来自 skills/<name>/SKILL.md)
+// entry 为可选的“直接可调用脚本”入口(PetAssistant 扩展字段);无 entry 的纯文档式 skill 走 use_skill 渐进式加载。
+struct PetSkill { let name: String; let desc: String; let args: [String: String]; let entry: String?; let dir: String; let bodyPath: String }
 
 // MARK: - 无边框窗口须重写才能收键盘
 final class PetWindow: NSWindow {
@@ -366,28 +367,61 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     // MARK: 待办 → 弹题素材
     func pushTasks() { send(["type": "tasks", "items": currentTodos()]) }
 
-    // MARK: 动态 skill 加载 / 执行
+    // MARK: 动态 skill 加载 / 执行(SKILL.md,对齐 Claude Agent Skills)
     func loadSkills() {
         skills = []
         guard let subs = try? FileManager.default.contentsOfDirectory(at: skillsDir, includingPropertiesForKeys: nil) else { return }
         for dir in subs {
-            let manifest = dir.appendingPathComponent("skill.json")
-            guard let d = try? Data(contentsOf: manifest),
-                  let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
-                  let name = o["name"] as? String,
-                  let run = o["run"] as? String else { continue }
-            let args = (o["args"] as? [String: String]) ?? [:]
-            skills.append(PetSkill(name: name, desc: o["description"] as? String ?? "",
-                                   args: args, runPath: dir.appendingPathComponent(run).path, dir: dir.path))
+            let md = dir.appendingPathComponent("SKILL.md")
+            guard let text = try? String(contentsOf: md, encoding: .utf8) else { continue }
+            let front = parseFrontmatter(text).front
+            guard let name = front["name"], !name.isEmpty else { continue }
+            var args: [String: String] = [:]
+            if let aj = front["args"], let d = aj.data(using: .utf8),
+               let o = try? JSONSerialization.jsonObject(with: d) as? [String: String] { args = o }
+            let entry = front["entry"].flatMap { $0.isEmpty ? nil : $0 }
+            skills.append(PetSkill(name: name, desc: front["description"] ?? "",
+                                   args: args, entry: entry, dir: dir.path, bodyPath: md.path))
         }
     }
+    // 极简 YAML frontmatter 解析:--- 之间的 key: value 行(args 的 value 是一行 JSON)
+    func parseFrontmatter(_ text: String) -> (front: [String: String], body: String) {
+        guard text.hasPrefix("---") else { return ([:], text) }
+        let after = text.dropFirst(3)
+        guard let end = after.range(of: "\n---") else { return ([:], text) }
+        let fm = String(after[after.startIndex..<end.lowerBound])
+        let body = String(after[end.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        var front: [String: String] = [:]
+        for line in fm.split(separator: "\n") {
+            guard let c = line.firstIndex(of: ":") else { continue }
+            let k = line[..<c].trimmingCharacters(in: .whitespaces)
+            var v = String(line[line.index(after: c)...]).trimmingCharacters(in: .whitespaces)
+            if v.count >= 2, v.hasPrefix("\""), v.hasSuffix("\"") { v = String(v.dropFirst().dropLast()) }
+            if !k.isEmpty { front[k] = v }
+        }
+        return (front, body)
+    }
+    // 把脚本按扩展名跑起来(stdin 传 JSON 参数,cwd = skill 目录)
+    func execScript(_ path: String, cwd: String, args: [String: Any]) -> String {
+        let interp = path.hasSuffix(".py") ? "/usr/bin/python3" : "/bin/bash"
+        let argJSON = (try? JSONSerialization.data(withJSONObject: args)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+        let (out, code) = runProc([interp, path], stdin: argJSON, cwd: cwd)
+        let trimmed = out.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? "(脚本执行完毕,退出码 \(code),无输出)" : String(trimmed.prefix(6000))
+    }
+    // 把相对路径限制在 skill 目录内,防越界
+    func safeResolve(_ rel: String, under dir: String) -> String? {
+        let base = URL(fileURLWithPath: dir).standardizedFileURL.path
+        let full = URL(fileURLWithPath: dir).appendingPathComponent(rel).standardizedFileURL.path
+        return (full == base || full.hasPrefix(base + "/")) ? full : nil
+    }
+    // 直接按名字调用一个有 entry 的 skill(内部调用如 send_matrx/daily_report 也走这里)
     func runSkill(_ name: String, _ args: [String: Any]) -> String {
         guard let sk = skills.first(where: { $0.name == name }) else { return "没有名为 \(name) 的 skill" }
-        let interp = sk.runPath.hasSuffix(".py") ? "/usr/bin/python3" : "/bin/bash"
-        let argJSON = (try? JSONSerialization.data(withJSONObject: args)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
-        let (out, code) = runProc([interp, sk.runPath], stdin: argJSON, cwd: sk.dir)
-        let trimmed = out.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "(skill \(name) 执行完毕,退出码 \(code),无输出)" : String(trimmed.prefix(6000))
+        guard let entry = sk.entry else {
+            return "skill「\(name)」没有直接入口,请先用 use_skill 读它的说明,再按说明用 run_script 执行其中脚本。"
+        }
+        return execScript((sk.dir as NSString).appendingPathComponent(entry), cwd: sk.dir, args: args)
     }
     func sendMatrx(_ text: String) -> String { runSkill("send_matrx", ["text": text]) }
 
@@ -496,8 +530,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         - set_reminder {"when":"YYYY-MM-DD HH:mm","text":"提醒内容"} 到点通过 Matrx 提醒用户
         - write_report {"date":"YYYY-MM-DD","markdown":"报告全文"} 把报告写到桌面 BranchReports
         - list_tasks {} 重新读取最新任务清单
+        - use_skill {"name":"技能名"} 读某技能的完整说明(渐进式加载:技能清单里标了"先 use_skill"的,先用它读说明再操作)
+        - run_script {"skill":"技能名","script":"相对脚本路径","args":{...}} 执行某技能目录内的脚本
+        - read_file {"skill":"技能名","path":"相对文件路径"} 查看某技能目录内的文件
 
-        技能(skills,可扩展):
+        技能(skills,可扩展;对齐 Claude Agent Skills,每个 skill 一个 SKILL.md):
         \(skillsDoc())
 
         你天生的能力(不是工具,是你自己就会的):**看懂用户发来的图片、读懂用户发来的文件**。
@@ -521,8 +558,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     func skillsDoc() -> String {
         if skills.isEmpty { return "(暂无)" }
         return skills.map { sk in
-            let a = sk.args.isEmpty ? "{}" : "{" + sk.args.map { "\"\($0.key)\":\"\($0.value)\"" }.joined(separator: ",") + "}"
-            return "- \(sk.name) \(a) \(sk.desc)"
+            if sk.entry != nil {
+                let a = sk.args.isEmpty ? "{}" : "{" + sk.args.map { "\"\($0.key)\":\"\($0.value)\"" }.joined(separator: ",") + "}"
+                return "- \(sk.name) \(a) \(sk.desc)"    // 可直接当工具调用
+            }
+            return "- \(sk.name)(先 use_skill 读说明再按说明操作) \(sk.desc)"
         }.joined(separator: "\n")
     }
 
@@ -599,8 +639,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             return "报告已写入 \(f.path)"
         case "list_tasks":
             return readFile(tasksFile)
+        case "use_skill":
+            guard let n = args["name"] as? String, let sk = skills.first(where: { $0.name == n }) else {
+                return "没有名为 \(args["name"] ?? "") 的 skill"
+            }
+            let body = (try? String(contentsOfFile: sk.bodyPath, encoding: .utf8)).map { parseFrontmatter($0).body } ?? ""
+            let files = ((try? FileManager.default.subpathsOfDirectory(atPath: sk.dir)) ?? [])
+                .filter { !$0.hasPrefix(".") && !$0.contains("/.") && $0 != "SKILL.md" }
+                .prefix(40).joined(separator: "\n")
+            return "【skill \(n) 说明】\n\(String(body.prefix(4000)))\n\n【本 skill 目录下的文件(path 相对该目录,可用 run_script 执行 / read_file 查看)】\n\(files.isEmpty ? "(无)" : files)"
+        case "run_script":
+            guard let n = args["skill"] as? String, let sk = skills.first(where: { $0.name == n }) else { return "缺少 skill 或找不到该 skill" }
+            guard let rel = (args["script"] as? String) ?? (args["path"] as? String), !rel.isEmpty else { return "缺少 script(相对该 skill 目录的脚本路径)" }
+            guard let full = safeResolve(rel, under: sk.dir) else { return "路径越界,只能运行该 skill 目录内的脚本" }
+            return execScript(full, cwd: sk.dir, args: args["args"] as? [String: Any] ?? [:])
+        case "read_file":
+            guard let n = args["skill"] as? String, let sk = skills.first(where: { $0.name == n }) else { return "缺少 skill 或找不到该 skill" }
+            guard let rel = args["path"] as? String, let full = safeResolve(rel, under: sk.dir) else { return "缺少 path 或路径越界" }
+            return (try? String(contentsOfFile: full, encoding: .utf8)).map { String($0.prefix(6000)) } ?? "读不到该文件"
         default:
-            return runSkill(action, args)   // 动态 skill
+            return runSkill(action, args)   // 动态 skill(按名字直调有 entry 的)
         }
     }
 

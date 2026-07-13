@@ -21,8 +21,8 @@ zsh ~/Desktop/PetAssistant/pet-app/start_pet.sh
 2. 把**完整记忆**(about-you + 全部 tasks + 最近 inbox)+ 工具说明喂给当前模型
 3. 模型按 ReAct 协议逐步输出 `{"action":...}` 调工具 / `{"reply":...}` 收尾;App 执行工具并回灌结果,最多 7 步
 
-**内置工具**(Swift,直接操作 pet-data):add_task / complete_task / add_event / remember / set_reminder / write_report / list_tasks。
-**动态技能**(`../skills/` 下,可扩展):run_branch_report、send_matrx…… 启动时扫描 `skills/`,按 `skill.json` 动态生成工具清单;加技能=丢文件夹,详见 [skills/README.md](../skills/README.md)。
+**内置工具**(Swift,直接操作 pet-data):add_task / complete_task / add_event / remember / set_reminder / write_report / list_tasks / use_skill / run_script / read_file。
+**动态技能**(`../skills/` 下,可扩展,对齐 Claude Agent Skills):run_branch_report、send_matrx…… 启动时扫描 `skills/`,按每个子目录的 `SKILL.md`(YAML frontmatter + 正文)动态生成工具清单;标准 skill 走 use_skill 渐进式加载,带 `entry` 扩展字段的可按 name 直调;加技能=丢文件夹重启,详见 [skills/README.md](../skills/README.md)。
 所以你能直接说"给群里发个分支日报",它会:run_branch_report 采集 → write_report 写报告 → send_matrx 发群 → 回你一句。
 
 ## 模型配置(⚙️)

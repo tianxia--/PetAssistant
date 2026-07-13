@@ -1,6 +1,0 @@
-{
-  "name": "run_branch_report",
-  "description": "采集所有已配置 GitLab 仓库自上次以来有新提交的分支,返回原始增量文本(提交列表+改动文件)。用户想看/发各仓库最近改动、出分支日报时用。",
-  "args": {},
-  "run": "run.sh"
-}
