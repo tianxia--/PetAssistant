@@ -22,7 +22,7 @@
 - **Memory**: local vector memory (bilingual CN/EN, hybrid semantic + keyword search) that learns you over time
 - **File analysis**: documents (pdf / word / txt / code / logs) and images (screenshots) via 📎 picker / drag-drop / Cmd+V paste
 - **Skill mounting**: Claude Agent Skills format (`SKILL.md`) — drop a skill folder into `skills/` and restart; standard skills from Claude or the web work directly
-- **Reminders**: fire on schedule (can push to Matrx groups, etc.)
+- **Reminders**: fire on schedule (can push to Matrx groups, etc.); optional `matrx-watch` skill makes the pet chime + pop a prominent bubble whenever Matrx gets a new message (watches file mtime only, never reads content)
 
 ## First-time setup
 ```bash

@@ -282,6 +282,11 @@
           if (msg.on) showBubble('嗯?是不是有什么事~ 点我说说 ✨', { ttl: 0 });
           else hideBubble();
           break;
+        case 'matrxNew':
+          if (D()) { D().poke && D().poke(); D().setMotion('jump', 1); }
+          if (body.classList.contains('chat')) addMsg('pet', '📨 Matrx 有新消息!');
+          else showBubble('📨 Matrx 有新消息!', { ttl: 15000, actions: [{ label: '打开 Matrx', primary: true, onClick: () => toNative({ type: 'openMatrx' }) }, { label: '知道了', onClick: () => {} }] });
+          break;
       }
     };
 
@@ -296,9 +301,11 @@
         bubble.appendChild(row);
       }
       bubble.classList.add('show'); if (D()) D().setTalking(true);
+      // 量气泡实际高度,让待机窗口长高到刚好放得下(避免顶部被裁)
+      requestAnimationFrame(() => toNative({ type: 'bubbleH', h: bubble.offsetHeight }));
       if (opts.ttl !== 0) bubbleTimer = setTimeout(hideBubble, opts.ttl || 8000);
     }
-    function hideBubble() { bubble.classList.remove('show'); }
+    function hideBubble() { bubble.classList.remove('show'); toNative({ type: 'bubbleH', h: 0 }); }
 
     /* ---------- 轻量 Markdown 渲染(先转义 HTML,再套标记,防注入) ---------- */
     function escapeHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }

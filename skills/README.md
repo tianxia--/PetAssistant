@@ -57,6 +57,7 @@ args: {"text":"要发送的消息正文"}               # 可选:参数名→说
 - **daily-report**:每日分支日报——采集 → 整理成报告写桌面 BranchReports → 发群摘要。确定性、无需模型,可被定时调用。App 内置定时器每天按 `pet-config.json` 的 `dailyReportTime`(默认 09:03)自动触发,你也可以直接说"发个日报"。
 - **tech-news**:抓取科技资讯(Hacker News + 可配置 RSS 源 `sources.txt`),返回 Markdown 摘要。纯标准库、无需 API Key。
 - **wechat**:微信收发消息(双向,iLink Bot 协议)。`action=send` 发、`action=receive` 收(拉一次)。需先在终端扫码登录一次,凭证存 `wechat.conf`(私密)。建议用小号,有封号风险。
+- **matrx-watch**:检测 Matrx 是否有新消息(只看本地推送缓存文件 mtime,不读内容)。App 定时轮询,mtime 一变就让二蛋响一声+弹醒目气泡。需 Matrx 已安装;首次访问其容器时 macOS 会弹一次授权(二蛋已打包签名 `.app`,点一次 Allow 即长期记住)。删本文件夹即停用。
 
 ## 写一个新 skill 的最小例子
 

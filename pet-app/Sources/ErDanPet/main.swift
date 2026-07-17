@@ -77,6 +77,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     var hovering = false                    // 用户主动把鼠标滑到宠物身上:停下来问一句
     var prevMouse: NSPoint? = nil           // 上一次采样的鼠标位置(判断鼠标是否在"主动移动")
     var lastMouseMoveAt = Date.distantPast
+    var lastMatrxMtime = -1                 // 上次看到的 Matrx 推送缓存 mtime(-1=尚未取基线)
     var uiOpen = false
     var skills: [PetSkill] = []
     var dragPauseUntil = Date.distantPast
@@ -120,7 +121,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         NSApp.activate(ignoringOtherApps: true)
 
         Timer.scheduledTimer(withTimeInterval: 1800, repeats: true) { [weak self] _ in self?.pushTasks() }
-        Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in self?.checkReminders(); self?.checkDailyReport() }
+        Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in self?.checkReminders(); self?.checkDailyReport(); self?.checkMatrx() }
         // 鼠标跟踪:只有指针在宠物一带(或面板展开)才让窗口可点,其余空白区域点击穿透,不挡其他应用
         Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [weak self] _ in self?.updateClickThrough() }
     }
@@ -341,6 +342,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             }
         case "setPetName":
             if let name = b["name"] as? String { mutateConfig { $0["petName"] = name }; sendConfig() }
+        case "bubbleH": setBubbleRoom(CGFloat((b["h"] as? NSNumber)?.doubleValue ?? 0))
+        case "openMatrx": NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Matrx.app"))
         case "quit": stopMemService(); NSApp.terminate(nil)
         case "getConfig": sendConfig()
         case "saveModel": if let m = b["model"] as? [String: String] { saveModel(m) }
@@ -356,6 +359,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             }
         default: break
         }
+    }
+    // MARK: Matrx 新消息监听(仅当挂了 matrx_watch skill 时启用;只看推送缓存文件 mtime,不读内容)
+    func checkMatrx() {
+        guard skills.contains(where: { $0.name == "matrx_watch" }) else { return }
+        DispatchQueue.global().async { [weak self] in
+            guard let self else { return }
+            let out = self.runSkill("matrx_watch", [:])
+            guard let d = out.data(using: .utf8),
+                  let o = try? JSONSerialization.jsonObject(with: d) as? [String: Any],
+                  let latest = o["latest"] as? Int, latest > 0 else { return }
+            if self.lastMatrxMtime < 0 { self.lastMatrxMtime = latest; return }   // 首次只取基线,不提醒
+            if latest > self.lastMatrxMtime { self.lastMatrxMtime = latest; self.notifyMatrxNew() }
+        }
+    }
+    func notifyMatrxNew() {
+        _ = runProc(["/usr/bin/afplay", "/System/Library/Sounds/Glass.aiff"], stdin: nil)   // 响一声
+        send(["type": "matrxNew"])                                                          // 让二蛋醒目弹一下
+    }
+    // 气泡高度自适应:待机时让窗口长高到刚好放下气泡(气泡 CSS 贴 bottom:180,向上生长),收起再缩回
+    func setBubbleRoom(_ bubbleH: CGFloat) {
+        guard !chatMode else { return }
+        let bubbleBottom: CGFloat = 180                 // 与 pet.html #bubble 的 bottom 保持一致
+        let want = bubbleH <= 0 ? idleSize.height : max(idleSize.height, bubbleBottom + bubbleH + 14)
+        var f = window.frame
+        if abs(f.height - want) < 0.5 { return }
+        f.origin.y = baseY                              // 底边钉在地面,高度向上长
+        f.size.height = want
+        window.setFrame(f, display: true)
     }
     func send(_ p: [String: Any]) {
         guard let d = try? JSONSerialization.data(withJSONObject: p), let j = String(data: d, encoding: .utf8) else { return }
