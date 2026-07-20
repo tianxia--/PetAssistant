@@ -17,7 +17,7 @@
 ![horns](docs/screenshots/horns.png)
 
 ## 能力
-- **桌面宠物**:底边踱步、自发小动作、主题换肤、可切换龙角;鼠标滑到它身上会停下来问你「有什么事」,走路遇到静止的鼠标会拱起来绕过去
+- **桌面宠物**:底边踱步、自发小动作、主题换肤、可切换龙角;鼠标滑到它身上会停下来问你「有什么事」,走路遇到静止的鼠标会拱起来绕过去;可在 ⚙️ 里开「静止不动」模式让它待在原地不游走
 - **聊天大脑**:接你自己的 LLM(OpenAI / Anthropic 接口格式),带多轮上下文,回复支持 Markdown 格式化显示
 - **记忆**:本地向量记忆(中英双语,语义 + 关键词混合检索),越用越懂你
 - **文件分析**:文档(pdf / word / txt / 代码 / 日志)+ 图片(截图),支持 📎 选择 / 拖拽 / Cmd+V 粘贴
@@ -63,6 +63,18 @@ echo '{"action":"login"}' | python3 skills/wechat/run.py   # 打开输出的链�
 ![wechat](docs/screenshots/wechat.png)
 
 > 目前「收消息」是拉一次(`action=receive`);常驻自动监听在路线图里。
+
+### 🔔 让二蛋替你盯着 Claude(可选)
+二蛋每 2 秒看一个本地信号文件 `pet-data/pet-notify.log`——**任何程序往里追加一行,二蛋就响一声 + 弹醒目气泡**(那行文字就是提醒内容,零权限)。拿它接 Claude Code 的通知最顺手:在 `~/.claude/settings.json` 加 Notification hook,Claude **需要你授权 / 干完在等你** 时二蛋当场提醒(开了 auto 权限就没授权弹窗,不打扰):
+```json
+{ "hooks": { "Notification": [
+  { "matcher": "permission_prompt", "hooks": [{ "type": "command",
+    "command": "echo '🔔 Claude 在等你授权' >> ~/Desktop/PetAssistant/pet-data/pet-notify.log" }] },
+  { "matcher": "idle_prompt", "hooks": [{ "type": "command",
+    "command": "echo '✅ Claude 干完了,等你下一步' >> ~/Desktop/PetAssistant/pet-data/pet-notify.log" }] }
+] } }
+```
+> 命令行(CLI)确认可用;桌面 App / IDE 是否跑 settings.json 的 hook 需自行实测。
 
 ## 目录结构
 | 路径 | 作用 |

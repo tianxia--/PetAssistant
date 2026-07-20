@@ -17,7 +17,7 @@
 ![horns](docs/screenshots/horns.png)
 
 ## Features
-- **Desktop pet**: paces along the screen edge, idle gestures, theme recoloring, swappable dragon horns; slide your cursor onto it and it stops to ask "what's up?", and it arcs over a resting cursor in its path
+- **Desktop pet**: paces along the screen edge, idle gestures, theme recoloring, swappable dragon horns; slide your cursor onto it and it stops to ask "what's up?", and it arcs over a resting cursor in its path; a "stay still" mode (in ⚙️) keeps it in place instead of wandering
 - **Chat brain**: plug in your own LLM (OpenAI / Anthropic API format), with multi-turn context; replies render as Markdown
 - **Memory**: local vector memory (bilingual CN/EN, hybrid semantic + keyword search) that learns you over time
 - **File analysis**: documents (pdf / word / txt / code / logs) and images (screenshots) via 📎 picker / drag-drop / Cmd+V paste
@@ -63,6 +63,18 @@ Credentials are saved to `skills/wechat/wechat.conf` (git-ignored). Then the pet
 ![wechat](docs/screenshots/wechat.png)
 
 > Receiving is currently pull-once (`action=receive`); a resident auto-listener is on the roadmap.
+
+### 🔔 Let the pet watch Claude for you (optional)
+The pet checks a local signal file `pet-data/pet-notify.log` every 2s — **any program that appends a line makes the pet chime + pop a prominent bubble** (that line becomes the message; no permissions needed). The handiest use is wiring it to Claude Code notifications: add a Notification hook in `~/.claude/settings.json` so the pet alerts you the moment Claude **needs approval / is done and waiting** (with auto-permissions on there's no prompt, so it won't nag):
+```json
+{ "hooks": { "Notification": [
+  { "matcher": "permission_prompt", "hooks": [{ "type": "command",
+    "command": "echo '🔔 Claude needs your approval' >> ~/Desktop/PetAssistant/pet-data/pet-notify.log" }] },
+  { "matcher": "idle_prompt", "hooks": [{ "type": "command",
+    "command": "echo '✅ Claude is done, your turn' >> ~/Desktop/PetAssistant/pet-data/pet-notify.log" }] }
+] } }
+```
+> Confirmed working in the CLI; whether the desktop app / IDE run settings.json hooks is untested.
 
 ## Layout
 | Path | Purpose |

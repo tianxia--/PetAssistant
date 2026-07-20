@@ -8,6 +8,7 @@ let webDir = petHome.appendingPathComponent("pet-app/web")
 let tasksFile = petHome.appendingPathComponent("pet-data/tasks.md")
 let inboxFile = petHome.appendingPathComponent("pet-data/inbox.md")
 let chatLogFile = petHome.appendingPathComponent("pet-data/chat.log")   // 完整聊天流水:用户/模型原始输出/工具结果/回复
+let notifyFile = petHome.appendingPathComponent("pet-data/pet-notify.log")  // 外部(如 Claude hook)写一行 → 二蛋读到就醒目提醒
 let memDir = petHome.appendingPathComponent("pet-app/mem")               // 向量记忆服务(fastembed+zvec,常驻)
 let aboutFile = petHome.appendingPathComponent("pet-data/about-you.md")
 let dailyDir = petHome.appendingPathComponent("pet-data/daily")
@@ -74,10 +75,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     var baseY: CGFloat = 0
     var snapPending = false        // 拖动结束后,下一帧吸附到最近的边
     var paused = false
+    var stayStill = false                   // 静止不动模式:待在原地、只做 idle 动画,不到处踱步
     var hovering = false                    // 用户主动把鼠标滑到宠物身上:停下来问一句
     var prevMouse: NSPoint? = nil           // 上一次采样的鼠标位置(判断鼠标是否在"主动移动")
     var lastMouseMoveAt = Date.distantPast
     var lastMatrxMtime = -1                 // 上次看到的 Matrx 推送缓存 mtime(-1=尚未取基线)
+    var lastNotifyMtime = -1                // 上次看到的提醒信号文件 mtime(-1=尚未取基线)
     var uiOpen = false
     var skills: [PetSkill] = []
     var dragPauseUntil = Date.distantPast
@@ -115,6 +118,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         webView.loadFileURL(webDir.appendingPathComponent("pet.html"), allowingReadAccessTo: webDir)
 
         loadSkills()
+        stayStill = (loadConfig()["stayStill"] as? Bool) ?? false   // 恢复"静止不动"设置
         startMemService()          // 后台拉起向量记忆服务(模型加载 + 建索引在它自己进程里)
         installEditMenu()
         window.makeKeyAndOrderFront(nil)
@@ -122,6 +126,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
         Timer.scheduledTimer(withTimeInterval: 1800, repeats: true) { [weak self] _ in self?.pushTasks() }
         Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in self?.checkReminders(); self?.checkDailyReport(); self?.checkMatrx() }
+        Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.checkPetNotify() }   // 外部提醒信号(如 Claude hook)
         // 鼠标跟踪:只有指针在宠物一带(或面板展开)才让窗口可点,其余空白区域点击穿透,不挡其他应用
         Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [weak self] _ in self?.updateClickThrough() }
     }
@@ -183,7 +188,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
     func tick(_ dt: TimeInterval) {
         guard let screen = NSScreen.main else { return }
-        if paused || hovering || Date() < dragPauseUntil { if motion != .idle { setMotion(.idle) }; return }
+        if paused || stayStill || hovering || Date() < dragPauseUntil { if motion != .idle { setMotion(.idle) }; return }
         if snapPending { snapToBottom(); snapPending = false }
         stateRemain -= dt
         if stateRemain <= 0 { chooseNext() }
@@ -342,6 +347,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             }
         case "setPetName":
             if let name = b["name"] as? String { mutateConfig { $0["petName"] = name }; sendConfig() }
+        case "setStill":
+            stayStill = (b["on"] as? Bool) ?? false
+            mutateConfig { $0["stayStill"] = self.stayStill }
         case "bubbleH": setBubbleRoom(CGFloat((b["h"] as? NSNumber)?.doubleValue ?? 0))
         case "openMatrx": NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Matrx.app"))
         case "quit": stopMemService(); NSApp.terminate(nil)
@@ -376,6 +384,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     func notifyMatrxNew() {
         _ = runProc(["/usr/bin/afplay", "/System/Library/Sounds/Glass.aiff"], stdin: nil)   // 响一声
         send(["type": "matrxNew"])                                                          // 让二蛋醒目弹一下
+    }
+    // MARK: 外部提醒信号(如 Claude Code 的 Notification hook 往 notifyFile 追加一行)
+    func checkPetNotify() {
+        guard let attrs = try? FileManager.default.attributesOfItem(atPath: notifyFile.path),
+              let m = (attrs[.modificationDate] as? Date)?.timeIntervalSince1970 else { return }
+        let mt = Int(m)
+        if lastNotifyMtime < 0 { lastNotifyMtime = mt; return }   // 首次只取基线,不提醒旧内容
+        if mt > lastNotifyMtime {
+            lastNotifyMtime = mt
+            guard let s = try? String(contentsOf: notifyFile, encoding: .utf8) else { return }
+            let line = s.split(separator: "\n").last.map(String.init)?.trimmingCharacters(in: .whitespaces) ?? ""
+            if !line.isEmpty { notifyAttn(line) }
+        }
+    }
+    func notifyAttn(_ text: String) {
+        DispatchQueue.global().async { [weak self] in _ = self?.runProc(["/usr/bin/afplay", "/System/Library/Sounds/Glass.aiff"], stdin: nil) }
+        send(["type": "attn", "text": text])
     }
     // 气泡高度自适应:待机时让窗口长高到刚好放下气泡(气泡 CSS 贴 bottom:180,向上生长),收起再缩回
     func setBubbleRoom(_ bubbleH: CGFloat) {
@@ -419,7 +444,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     func sendConfig() {
         let c = loadConfig()
         let ms = (c["models"] as? [[String: String]] ?? []).map { m -> [String: String] in var v = m; v["apiKey"] = nil; return v }
-        send(["type": "config", "models": ms, "active": c["active"] as? String ?? "", "theme": c["theme"] as? String ?? "origin", "parts": c["parts"] as? [String: String] ?? [:], "petName": c["petName"] as? String ?? ""])
+        send(["type": "config", "models": ms, "active": c["active"] as? String ?? "", "theme": c["theme"] as? String ?? "origin", "parts": c["parts"] as? [String: String] ?? [:], "petName": c["petName"] as? String ?? "", "stayStill": c["stayStill"] as? Bool ?? false])
     }
     func petName() -> String { (loadConfig()["petName"] as? String) ?? "" }
     func activeModel() -> [String: String]? {

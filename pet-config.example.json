@@ -12,5 +12,6 @@
   "active": "示例模型",
   "theme": "origin",
   "petName": "",
-  "parts": { "horns": "pointed" }
+  "parts": { "horns": "pointed" },
+  "stayStill": false
 }
