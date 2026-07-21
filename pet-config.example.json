@@ -13,5 +13,6 @@
   "theme": "origin",
   "petName": "",
   "parts": { "horns": "pointed" },
-  "stayStill": false
+  "stayStill": false,
+  "lang": "en"
 }

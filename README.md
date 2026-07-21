@@ -1,92 +1,92 @@
 # PetAssistant 🐉
 
-**[中文](README.md) · [English](README.en.md)**
+**[English](README.md) · [中文](README.zh.md)**
 
-> 一只住在你桌面上的小龙:**听、记、理、提醒**。把零散的话丢给它,它帮你整理任务、生成每日记录、到点提醒;还能看图、读文件、记住你说过的事。它不写代码、不干重活。
+> A little dragon that lives on your desktop — it **listens, remembers, organizes and reminds**. Toss it anything (tasks, ideas, done-reports, chit-chat) and it files your tasks, writes a daily log, and pings you on time. It can also read images and files, and remember what you told it. It doesn't write code or do heavy lifting.
 
 <p align="center">
-  <img src="docs/screenshots/hero.png" width="220" alt="桌宠小龙">
+  <img src="docs/screenshots/hero.png" width="220" alt="desktop pet dragon">
 </p>
 
-**🎨 主题换肤**
+**🎨 Themes**
 
 ![themes](docs/screenshots/themes.png)
 
-**🐲 可切换龙角**
+**🐲 Swappable horns**
 
 ![horns](docs/screenshots/horns.png)
 
-## 能力
-- **桌面宠物**:底边踱步、自发小动作、主题换肤、可切换龙角;鼠标滑到它身上会停下来问你「有什么事」,走路遇到静止的鼠标会拱起来绕过去;可在 ⚙️ 里开「静止不动」模式让它待在原地不游走
-- **聊天大脑**:接你自己的 LLM(OpenAI / Anthropic 接口格式),带多轮上下文,回复支持 Markdown 格式化显示
-- **记忆**:本地向量记忆(中英双语,语义 + 关键词混合检索),越用越懂你
-- **文件分析**:文档(pdf / word / txt / 代码 / 日志)+ 图片(截图),支持 📎 选择 / 拖拽 / Cmd+V 粘贴
-- **技能挂载**:对齐 Claude Agent Skills(`SKILL.md`),把技能文件夹丢进 `skills/` 重启即用,可直接用从 Claude / 网上拿的标准技能
-- **提醒**:到点推送(可接 Matrx 群等);可选挂 `matrx-watch` 技能,Matrx 一来新消息就让二蛋响一声+弹醒目气泡(纯看文件时间戳,不读内容)
+## Features
+- **Desktop pet**: paces along the screen edge, idle gestures, theme recoloring, swappable dragon horns; slide your cursor onto it and it stops to ask "what's up?", and it arcs over a resting cursor in its path; a "stay still" mode (in ⚙️) keeps it in place instead of wandering
+- **Chat brain**: plug in your own LLM (OpenAI / Anthropic API format), with multi-turn context; replies render as Markdown
+- **Memory**: local vector memory (bilingual CN/EN, hybrid semantic + keyword search) that learns you over time
+- **File analysis**: documents (pdf / word / txt / code / logs) and images (screenshots) via 📎 picker / drag-drop / Cmd+V paste
+- **Skill mounting**: Claude Agent Skills format (`SKILL.md`) — drop a skill folder into `skills/` and restart; standard skills from Claude or the web work directly
+- **Reminders**: fire on schedule (can push to Matrx groups, etc.); optional `matrx-watch` skill makes the pet chime + pop a prominent bubble whenever Matrx gets a new message (watches file mtime only, never reads content)
 
-## 首次安装
+## First-time setup
 ```bash
 cd ~/Desktop/PetAssistant/pet-app
 
-# 1) 向量记忆的 Python 环境(本地、无 torch,约 210MB)
+# 1) Python env for vector memory (local, no torch, ~210MB)
 python3 -m venv mem/.venv
 mem/.venv/bin/pip install -r mem/requirements.txt
 
-# 2) 启动(首次会从 .example 生成 pet-config.json / pet-data 等本地文件,并编译 App)
+# 2) Launch (first run seeds pet-config.json / pet-data from .example files and builds the app)
 ./start_pet.sh
 ```
-启动后点开小龙 → ⚙️ 设置里:
-1. **配模型**:填你的 LLM 接口(地址 / 模型 ID / API Key)。没配也能用,消息会先记进收件箱。
-2. **起名**:在「🐣 名字」给它起个名。
-3. (可选)选主题颜色、龙角样式。
-4. (可选)分支日报:把要跟踪的 GitLab 仓库填进 `skills/branch-report/data/repos.txt`。
+Then open the dragon → ⚙️ Settings:
+1. **Configure a model**: your LLM endpoint (URL / model ID / API key). It works without one too — messages are logged to the inbox first.
+2. **Name it**: give it a name under "🐣 Name". (Switch UI language under "🌐 Language" — default English.)
+3. (Optional) pick a theme color and horn style.
+4. (Optional) branch reports: list the GitLab repos to track in `skills/branch-report/data/repos.txt`.
 
-**开机自启**(可选):`cd pet-app && ./autostart.sh` —— 登录时自动拉起二蛋(装一个 LaunchAgent,`./autostart.sh off` 关闭)。重启电脑不再消失。
+**Auto-start at login** (optional): `cd pet-app && ./autostart.sh` — installs a LaunchAgent so the pet launches when you log in (`./autostart.sh off` to disable). No more disappearing after a reboot.
 
-> 也可以在本目录开 Claude Code 会话来驱动它(`cd ~/Desktop/PetAssistant && claude`)。
+> You can also drive it from a Claude Code session in this folder (`cd ~/Desktop/PetAssistant && claude`).
 
-## 内置技能 & 使用流程
+## Built-in skills & usage
 
-技能都在 `skills/`,对齐 [Claude Agent Skills](https://docs.claude.com/en/docs/claude-code/skills)(每个子目录一个 `SKILL.md`)。想用就留着,不用删文件夹即可;从 Claude / 网上拿的标准技能丢进来重启也能用。
+Skills live in `skills/`, aligned with [Claude Agent Skills](https://docs.claude.com/en/docs/claude-code/skills) (one `SKILL.md` per folder). Keep the ones you want, delete the folders you don't; standard skills from Claude or the web work when dropped in and restarted.
 
-### 📰 科技资讯(tech-news)
-对二蛋说「看看今天科技圈有啥」,它就抓 **Hacker News** + 你在 `skills/tech-news/sources.txt` 配置的 **RSS 源**,整理成摘要(纯本地、无需 API Key):
+### 📰 Tech news (tech-news)
+Say "show me today's tech news" and it fetches **Hacker News** + the **RSS feeds** you list in `skills/tech-news/sources.txt`, then formats a digest (fully local, no API key):
 
 ![tech-news](docs/screenshots/tech-news.png)
 
-### 💬 微信收发(wechat,双向)
-基于微信 iLink Bot 协议,能发也能收。先在终端**扫码登录一次**(建议用小号,非官方通道有封号风险):
+### 💬 WeChat send/receive (wechat, bidirectional)
+Built on WeChat's iLink Bot protocol — sends and receives. Log in **once via QR** in the terminal (use a secondary account; this is an unofficial channel with ban risk):
 ```bash
 cd ~/Desktop/PetAssistant
-echo '{"action":"login"}' | python3 skills/wechat/run.py   # 打开输出的链接,手机微信扫码
+echo '{"action":"login"}' | python3 skills/wechat/run.py   # open the printed link, scan with WeChat
 ```
-登录后凭证存 `skills/wechat/wechat.conf`(不入库)。之后就能让二蛋发/收微信:
+Credentials are saved to `skills/wechat/wechat.conf` (git-ignored). Then the pet can send/receive WeChat messages:
 
 ![wechat](docs/screenshots/wechat.png)
 
-> 目前「收消息」是拉一次(`action=receive`);常驻自动监听在路线图里。
+> Receiving is currently pull-once (`action=receive`); a resident auto-listener is on the roadmap.
 
-### 🔔 让二蛋替你盯着 Claude(可选)
-二蛋每 2 秒看一个本地信号文件 `pet-data/pet-notify.log`——**任何程序往里追加一行,二蛋就响一声 + 弹醒目气泡**(那行文字就是提醒内容,零权限)。拿它接 Claude Code 的通知最顺手:在 `~/.claude/settings.json` 加 Notification hook,Claude **需要你授权 / 干完在等你** 时二蛋当场提醒(开了 auto 权限就没授权弹窗,不打扰):
+### 🔔 Let the pet watch Claude for you (optional)
+The pet checks a local signal file `pet-data/pet-notify.log` every 2s — **any program that appends a line makes the pet chime + pop a prominent bubble** (that line becomes the message; no permissions needed). The handiest use is wiring it to Claude Code notifications: add a Notification hook in `~/.claude/settings.json` so the pet alerts you the moment Claude **needs approval / is done and waiting** (with auto-permissions on there's no prompt, so it won't nag):
 ```json
 { "hooks": { "Notification": [
   { "matcher": "permission_prompt", "hooks": [{ "type": "command",
-    "command": "echo '🔔 Claude 在等你授权' >> ~/Desktop/PetAssistant/pet-data/pet-notify.log" }] },
+    "command": "echo '🔔 Claude needs your approval' >> ~/Desktop/PetAssistant/pet-data/pet-notify.log" }] },
   { "matcher": "idle_prompt", "hooks": [{ "type": "command",
-    "command": "echo '✅ Claude 干完了,等你下一步' >> ~/Desktop/PetAssistant/pet-data/pet-notify.log" }] }
+    "command": "echo '✅ Claude is done, your turn' >> ~/Desktop/PetAssistant/pet-data/pet-notify.log" }] }
 ] } }
 ```
-> 命令行(CLI)确认可用;桌面 App / IDE 是否跑 settings.json 的 hook 需自行实测。
+> Confirmed working in the CLI; whether the desktop app / IDE run settings.json hooks is untested.
 
-## 目录结构
-| 路径 | 作用 |
-|------|------|
-| `pet-app/` | 桌宠 App(Swift + WebView):`Sources/` 大脑、`web/` 界面与动画、`mem/` 向量记忆 |
-| `pet-data/` | 它的记忆(**你的私有数据,不入库**):`inbox.md`、`tasks.md`、`about-you.md`、`daily/` |
-| `skills/` | 可扩展技能:分支日报、群消息推送、科技资讯抓取、微信收发等(对齐 Claude Agent Skills,每个子目录一个 `SKILL.md`,丢进来重启即用) |
-| `CLAUDE.md` | 人格与行为准则 |
-| `docs/` | 需求与设计、项目地图 |
-| `*.example.*` | 种子/示例文件,首次运行据此生成你的本地文件 |
+## Layout
+| Path | Purpose |
+|------|---------|
+| `pet-app/` | The pet app (Swift + WebView): `Sources/` brain, `web/` UI & animation, `mem/` vector memory |
+| `pet-data/` | Its memory (**your private data, git-ignored**): `inbox.md`, `tasks.md`, `about-you.md`, `daily/` |
+| `skills/` | Extensible skills: branch report, group messaging, tech-news aggregation, WeChat send/receive, etc. (Claude Agent Skills format — one `SKILL.md` per folder, drop in & restart) |
+| `CLAUDE.md` | Persona & behavior rules |
+| `docs/` | Design docs & project map |
+| `*.example.*` | Seed/example files; your local files are generated from these on first run |
 
-## 隐私
-真实数据(`pet-data/*.md`、`pet-config.json`、`repos.txt`、聊天日志、向量索引、venv)都已 `.gitignore`,**不会进仓库**。`pet-data/` 是它的全部记忆,想备份请存到你自己的私有位置。
+## Privacy
+Real data (`pet-data/*.md`, `pet-config.json`, `repos.txt`, chat log, vector index, venv) is all `.gitignore`d and **never committed**. `pet-data/` holds all of its memory — back it up to your own private location.

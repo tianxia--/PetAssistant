@@ -76,6 +76,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     var snapPending = false        // 拖动结束后,下一帧吸附到最近的边
     var paused = false
     var stayStill = false                   // 静止不动模式:待在原地、只做 idle 动画,不到处踱步
+    var uiLang = "en"                       // 界面/人格语言:默认英文,用户可切 zh
     var hovering = false                    // 用户主动把鼠标滑到宠物身上:停下来问一句
     var prevMouse: NSPoint? = nil           // 上一次采样的鼠标位置(判断鼠标是否在"主动移动")
     var lastMouseMoveAt = Date.distantPast
@@ -119,6 +120,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
 
         loadSkills()
         stayStill = (loadConfig()["stayStill"] as? Bool) ?? false   // 恢复"静止不动"设置
+        uiLang = (loadConfig()["lang"] as? String) ?? "en"          // 恢复语言(默认英文)
         startMemService()          // 后台拉起向量记忆服务(模型加载 + 建索引在它自己进程里)
         installEditMenu()
         window.makeKeyAndOrderFront(nil)
@@ -350,6 +352,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         case "setStill":
             stayStill = (b["on"] as? Bool) ?? false
             mutateConfig { $0["stayStill"] = self.stayStill }
+        case "setLang":
+            uiLang = ((b["lang"] as? String) == "zh") ? "zh" : "en"
+            mutateConfig { $0["lang"] = self.uiLang }
         case "bubbleH": setBubbleRoom(CGFloat((b["h"] as? NSNumber)?.doubleValue ?? 0))
         case "openMatrx": NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Matrx.app"))
         case "quit": stopMemService(); NSApp.terminate(nil)
@@ -444,7 +449,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     func sendConfig() {
         let c = loadConfig()
         let ms = (c["models"] as? [[String: String]] ?? []).map { m -> [String: String] in var v = m; v["apiKey"] = nil; return v }
-        send(["type": "config", "models": ms, "active": c["active"] as? String ?? "", "theme": c["theme"] as? String ?? "origin", "parts": c["parts"] as? [String: String] ?? [:], "petName": c["petName"] as? String ?? "", "stayStill": c["stayStill"] as? Bool ?? false])
+        send(["type": "config", "models": ms, "active": c["active"] as? String ?? "", "theme": c["theme"] as? String ?? "origin", "parts": c["parts"] as? [String: String] ?? [:], "petName": c["petName"] as? String ?? "", "stayStill": c["stayStill"] as? Bool ?? false, "lang": c["lang"] as? String ?? "en"])
     }
     func petName() -> String { (loadConfig()["petName"] as? String) ?? "" }
     func activeModel() -> [String: String]? {
@@ -525,7 +530,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             guard let m = self.activeModel(), !((m["apiKey"] ?? "").isEmpty) else {
                 self.logChat("⚠️ 未配置模型,仅记入收件箱")
                 self.send(["type": "error", "needConfig": true,
-                           "text": "记到收件箱啦~还没配置模型,点 ⚙️ 配一个我就能聊天+干活了"]); return
+                           "text": uiLang == "zh" ? "记到收件箱啦~还没配置模型,点 ⚙️ 配一个我就能聊天+干活了" : "Saved to your inbox~ no model configured yet — set one in ⚙️ and I can chat + do things"]); return
             }
             let recalled = self.memRecall(text)                     // 按这句话检索相关的沉淀记忆
             if !recalled.isEmpty { self.logChat("📚 召回记忆: \(recalled.joined(separator: " | ").prefix(300))") }
@@ -551,7 +556,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
                 let (out, err) = self.chat(convo)
                 guard let out else {
                     self.logChat("❌ 模型调用失败(第\(step)步): \(err ?? "未知")")
-                    self.send(["type": "error", "needConfig": false, "text": "已记到收件箱;模型没回话:\(err ?? "未知")"]); return
+                    self.send(["type": "error", "needConfig": false, "text": self.uiLang == "zh" ? "已记到收件箱;模型没回话:\(err ?? "未知")" : "Saved to inbox; the model didn't respond: \(err ?? "unknown")"]); return
                 }
                 self.logChat("🧠 模型(第\(step)步): \(out.prefix(1500))")
                 let obj = self.extractJSON(out)
@@ -576,7 +581,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             }
             self.logChat("🔁 达到最大步数(\(MAX_AGENT_STEPS))未收敛")
             self.pushTasks()
-            self.send(["type": "reply", "text": "嗯…我绕进去了,先记下了,稍后再帮你弄细 🙈"])
+            self.send(["type": "reply", "text": self.uiLang == "zh" ? "嗯…我绕进去了,先记下了,稍后再帮你弄细 🙈" : "Hmm… I got a bit lost. I've noted it down; let's refine it later 🙈"])
         }
     }
     func logChat(_ s: String) { appendLine("[\(now("yyyy-MM-dd HH:mm:ss"))] \(s)", to: chatLogFile) }
@@ -591,8 +596,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         let about = readFile(aboutFile)
         let tasks = readFile(tasksFile)
         let inboxTail = tailLines(inboxFile, 12)
-        let recallBlock = recall.isEmpty ? "(无)" : recall.map { "- " + $0 }.joined(separator: "\n")
-        return """
+        if uiLang == "zh" {
+            let recallBlock = recall.isEmpty ? "(无)" : recall.map { "- " + $0 }.joined(separator: "\n")
+            return """
         你是主人的桌面宠物小龙\(petName().isEmpty ? "(还没有名字——第一次见面时请主人给你起个名,记到 about-you)" : "「\(petName())」"),是主人的贴身记录助手兼小伙伴。语气简短、温暖、亲密,默认中文。主人是谁、在做什么,看下面「关于主人」的记忆,不要凭空假设。
         现在时间:\(now("yyyy-MM-dd HH:mm EEEE"))。
 
@@ -642,6 +648,59 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         典型:用户说"给群里发个分支日报" → run_branch_report → write_report → send_matrx 精简摘要 → reply;
         用户说"最近各仓库有啥提交" → recent_commits → 据真实结果 reply。
         用户随口说的任务/完成/安排,顺手用对应工具记下来,再温暖地 reply。纯闲聊直接 reply 即可。
+        """
+        }
+        let recallBlock = recall.isEmpty ? "(none)" : recall.map { "- " + $0 }.joined(separator: "\n")
+        return """
+        You are your owner's desktop pet dragon\(petName().isEmpty ? " (no name yet — on first meeting, ask your owner to name you and save it to about-you)" : " \"\(petName())\""), their personal note-taker and companion. Keep replies short, warm and friendly. Reply in the user's language (default English; if they write in Chinese, reply in Chinese). Who your owner is and what they do — see the "about the owner" memory below; don't make things up.
+        Now: \(now("yyyy-MM-dd HH:mm EEEE")).
+
+        You have long-term memory (the blocks below ARE your memory; answer "what tasks do I have / what did I say last time" from them, never invent):
+        ===== about the owner =====
+        \(about)
+        ===== current tasks =====
+        \(tasks)
+        ===== recent inbox (what the user said lately) =====
+        \(inboxTail)
+        ===== related memory (retrieved for this message; use if relevant, ignore if not) =====
+        \(recallBlock)
+        =====
+
+        You can call tools to get things done. Each step, output EXACTLY ONE JSON object and nothing else:
+        · call a tool: {"action":"tool_name","args":{...}}
+        · finish and reply: {"reply":"text for the user, plain text"} (usually short, under ~50 words; when reading an image/file or explaining, you may write more)
+
+        Built-in tools:
+        - add_task {"text":"task","due":"optional deadline e.g. 2026-07-10"} add a to-do
+        - complete_task {"match":"task number or keyword"} mark a task done
+        - add_event {"text":"YYYY-MM-DD HH:mm thing"} record a timed event
+        - remember {"fact":"a long-term fact/preference/jargon about the user"} write to long-term memory
+        - set_reminder {"when":"YYYY-MM-DD HH:mm","text":"..."} remind the user via Matrx at that time
+        - write_report {"date":"YYYY-MM-DD","markdown":"full report"} write a report to Desktop BranchReports
+        - list_tasks {} re-read the latest task list
+        - use_skill {"name":"skill"} read a skill's full instructions (progressive: for skills marked "use_skill first", read it before acting)
+        - run_script {"skill":"skill","script":"relative path","args":{...}} run a script inside a skill's folder
+        - read_file {"skill":"skill","path":"relative path"} view a file inside a skill's folder
+
+        Skills (extensible, aligned with Claude Agent Skills, one SKILL.md each):
+        \(skillsDoc())
+
+        Your innate abilities (not tools — you just can): **understand images the user sends, and read files the user sends.**
+        When the user sends an image it appears directly in the message; when they send a file its content is attached starting with "【附件:filename】".
+        In that case, DIRECTLY look/read and describe, analyze, summarize, answer — you can do this; never say "I can't analyze images/files".
+
+        Iron rules (must follow):
+        1. Analyzing images/files the user sends = you CAN (above). Otherwise you can only do what's in the tools/skills list; things not listed (git merge, releasing, editing code, running builds) are what you CANNOT do — tell the user honestly "I can't do that, do it in the actual project", never pretend, and never decline image/file reading which you can do.
+        2. You have NO background tasks; you can't "handle it later / in the background". Finish within this turn using tools, or say plainly you can't; never stall with "I'm running it in the background / hold on / organizing it".
+        3. Commits/branches/names/numbers in reports must come ONLY from real tool output — never fabricate. If a tool says "no commits", there are none.
+        4. Two commit-viewing tools differ:
+           · recent_commits — "all commits in the last N days" (repeatable, same result). Use when the user asks "recent commits / did repo X get commits / who changed what these days".
+           · run_branch_report — the "incremental report since last time" (advances state; mainly for the daily scheduled report). Use only when the user explicitly wants to "send the daily report to the group".
+           When unsure, use recent_commits.
+
+        Typical: "send a branch report to the group" → run_branch_report → write_report → send_matrx short summary → reply;
+        "any recent commits across repos" → recent_commits → reply from real results.
+        When the user casually mentions a task/completion/plan, quietly record it with the right tool, then reply warmly. For pure chit-chat, just reply.
         """
     }
     func skillsDoc() -> String {
@@ -783,8 +842,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         for i in a.indices {
             if (a[i]["fired"] as? Bool) == false, let w = a[i]["when"] as? String, w <= nowStr {
                 let text = a[i]["text"] as? String ?? ""
-                _ = sendMatrx("⏰ 提醒:\(text)")
-                send(["type": "reply", "text": "⏰ 提醒:\(text)"])
+                let prefix = uiLang == "zh" ? "⏰ 提醒:" : "⏰ Reminder: "
+                _ = sendMatrx("\(prefix)\(text)")
+                send(["type": "reply", "text": "\(prefix)\(text)"])
                 a[i]["fired"] = true; changed = true
             }
         }
@@ -813,7 +873,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         let lines = readFile(url).components(separatedBy: "\n").filter { $0.hasPrefix("- [") }
         return lines.suffix(n).joined(separator: "\n")
     }
-    func now(_ fmt: String) -> String { let f = DateFormatter(); f.locale = Locale(identifier: "zh_CN"); f.dateFormat = fmt; return f.string(from: Date()) }
+    func now(_ fmt: String) -> String { let f = DateFormatter(); f.locale = Locale(identifier: uiLang == "zh" ? "zh_CN" : "en_US"); f.dateFormat = fmt; return f.string(from: Date()) }
     func currentTodos() -> [String] {
         var items: [String] = []; var inTodo = false
         for line in readFile(tasksFile).components(separatedBy: "\n") {

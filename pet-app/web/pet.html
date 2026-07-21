@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>二蛋</title>
@@ -110,46 +110,48 @@
 
   <div id="card">
     <div id="card-head">
-      <div class="name">小龙</div>
-      <button id="btn-sleep" title="睡觉/叫醒">🌙</button>
-      <button id="btn-settings" title="设置">⚙️</button>
-      <button id="btn-close" title="收起">✕</button>
+      <div class="name">Little Dragon</div>
+      <button id="btn-sleep" data-i18n-title="t_sleep" title="Sleep / Wake">🌙</button>
+      <button id="btn-settings" data-i18n-title="t_settings" title="Settings">⚙️</button>
+      <button id="btn-close" data-i18n-title="t_close" title="Close">✕</button>
     </div>
     <div id="messages"></div>
     <div id="attachchip"></div>
     <div id="inputrow">
-      <button id="attachbtn" title="添加文件/图片(也可直接把文件拖到二蛋身上)">📎</button>
-      <input id="chatinput" placeholder="跟二蛋说点什么…" maxlength="500">
+      <button id="attachbtn" data-i18n-title="t_attach" title="Attach a file/image (or drag it onto the pet)">📎</button>
+      <input id="chatinput" data-i18n-ph="ph_chat" placeholder="Say something…" maxlength="500">
       <button id="sendbtn">➤</button>
     </div>
     <div id="settings">
-      <h4>🐣 名字</h4>
-      <input id="petname-input" placeholder="给它起个名…">
-      <h4>🎨 宠物主题</h4>
+      <h4 data-i18n="s_lang">🌐 Language</h4>
+      <div class="toggle-row"><select id="lang-sel"><option value="en">English</option><option value="zh">中文</option></select></div>
+      <h4 data-i18n="s_name">🐣 Name</h4>
+      <input id="petname-input" data-i18n-ph="ph_name" placeholder="Give it a name…">
+      <h4 data-i18n="s_theme">🎨 Theme</h4>
       <div id="themes"></div>
       <div id="custom-color">
-        <input type="color" id="c-color" value="#EE5044" title="自定义颜色">
-        <span>或自定义:点左边色块任选颜色</span>
+        <input type="color" id="c-color" value="#EE5044" data-i18n-title="t_custom" title="Custom color">
+        <span data-i18n="s_custom">Or custom: pick any color on the left</span>
       </div>
-      <h4>🐲 部件 · 角</h4>
+      <h4 data-i18n="s_parts">🐲 Parts · Horns</h4>
       <div id="parts"></div>
-      <h4>🚶 走动</h4>
-      <label class="toggle-row"><input type="checkbox" id="still-toggle"> 静止不动(待在原地,不到处走)</label>
-      <h4>🧠 模型配置</h4>
+      <h4 data-i18n="s_move">🚶 Movement</h4>
+      <label class="toggle-row"><input type="checkbox" id="still-toggle"> <span data-i18n="s_still">Stay still (stay in place, don't wander)</span></label>
+      <h4 data-i18n="s_model">🧠 Model</h4>
       <div id="model-list"></div>
-      <div class="hint">聊天走当前选中的模型;没配也能用,消息会先记到收件箱。</div>
-      <input id="m-name" placeholder="名称(如 我的模型)">
+      <div class="hint" data-i18n="s_modelhint">Chat uses the selected model; works without one too — messages go to the inbox first.</div>
+      <input id="m-name" data-i18n-ph="ph_mname" placeholder="Name (e.g. My model)">
       <div class="row2">
-        <select id="m-format"><option value="openai">OpenAI 格式</option><option value="anthropic">Anthropic 格式</option></select>
-        <input id="m-model" placeholder="模型ID">
+        <select id="m-format"><option value="openai" data-i18n="opt_openai">OpenAI format</option><option value="anthropic" data-i18n="opt_anthropic">Anthropic format</option></select>
+        <input id="m-model" data-i18n-ph="ph_mmodel" placeholder="Model ID">
       </div>
-      <input id="m-url" placeholder="接口地址(如 https://.../v1)">
-      <input id="m-key" placeholder="API Key" type="password">
+      <input id="m-url" data-i18n-ph="ph_murl" placeholder="Endpoint (e.g. https://.../v1)">
+      <input id="m-key" data-i18n-ph="ph_mkey" placeholder="API Key" type="password">
       <div class="btns">
-        <button id="btn-quit" class="danger" title="退出二蛋">退出</button>
+        <button id="btn-quit" class="danger" data-i18n="b_quit" data-i18n-title="t_quit" title="Quit the pet">Quit</button>
         <div class="right">
-          <button id="m-back">返回</button>
-          <button id="m-save" class="primary">保存模型</button>
+          <button id="m-back" data-i18n="b_back">Back</button>
+          <button id="m-save" class="primary" data-i18n="b_save">Save</button>
         </div>
       </div>
     </div>
@@ -173,6 +175,66 @@
     const DEMO = new URLSearchParams(location.search).get('demo') === '1';
     const D = () => window.PetDragon;
     let sleeping = false, busy = false, bubbleTimer = null, pendingTasks = [], config = { models: [], active: null };
+
+    /* ---------- i18n(默认英文,可切中文) ---------- */
+    const I18N = {
+      en: {
+        name_default: 'Little Dragon',
+        t_sleep: 'Sleep / Wake', t_settings: 'Settings', t_close: 'Close',
+        t_attach: 'Attach a file/image (or drag it onto the pet)', t_custom: 'Custom color', t_quit: 'Quit the pet',
+        ph_chat: 'Say something…', ph_name: 'Give it a name…', ph_mname: 'Name (e.g. My model)',
+        ph_mmodel: 'Model ID', ph_murl: 'Endpoint (e.g. https://.../v1)', ph_mkey: 'API Key',
+        s_lang: '🌐 Language', s_name: '🐣 Name', s_theme: '🎨 Theme', s_custom: 'Or custom: pick any color on the left',
+        s_parts: '🐲 Parts · Horns', s_move: '🚶 Movement', s_still: "Stay still (stay in place, don't wander)",
+        s_model: '🧠 Model', s_modelhint: 'Chat uses the selected model; works without one too — messages go to the inbox first.',
+        opt_openai: 'OpenAI format', opt_anthropic: 'Anthropic format',
+        b_quit: 'Quit', b_back: 'Back', b_save: 'Save',
+        theme_origin: 'Crimson', theme_jade: 'Jade', theme_azure: 'Azure', theme_violet: 'Violet', theme_ink: 'Midnight', theme_sakura: 'Sakura',
+        horn_pointed: 'Pointed', horn_antler: 'Antler', horn_flame: 'Flame', horn_forked: 'Forked', horn_curved: 'Curved',
+        greet: "I'm here~ tell me anything, I'll remember it and help ✨",
+        reply_ok: 'Got it~', file_unreadable: "I can't read this file", kind_file: 'File',
+        cfg_go: 'Configure', ask: "Hmm? Something on your mind~ click me ✨",
+        matrx_new: '📨 New Matrx message!', open_matrx: 'Open Matrx', ok_btn: 'OK', attn_default: 'Hey, Claude needs you',
+        chat_later: 'Later', chat_talk: 'Chat', no_model: 'No model configured yet',
+        need_fields: 'Name, endpoint and model ID are all required', model_saved: n => `Model "${n}" saved & active ✅`,
+        clip_shot: 'clipboard-shot', key_keep: 'API Key (blank = keep current)',
+        sq: ['Had some water? Stretch a bit 💧', 'Anything to jot down?', 'Want to note that fleeting idea?', "What's on your mind right now?", 'How did the morning go?'],
+      },
+      zh: {
+        name_default: '小龙',
+        t_sleep: '睡觉/叫醒', t_settings: '设置', t_close: '收起',
+        t_attach: '添加文件/图片(也可直接把文件拖到二蛋身上)', t_custom: '自定义颜色', t_quit: '退出二蛋',
+        ph_chat: '跟二蛋说点什么…', ph_name: '给它起个名…', ph_mname: '名称(如 我的模型)',
+        ph_mmodel: '模型ID', ph_murl: '接口地址(如 https://.../v1)', ph_mkey: 'API Key',
+        s_lang: '🌐 语言', s_name: '🐣 名字', s_theme: '🎨 宠物主题', s_custom: '或自定义:点左边色块任选颜色',
+        s_parts: '🐲 部件 · 角', s_move: '🚶 走动', s_still: '静止不动(待在原地,不到处走)',
+        s_model: '🧠 模型配置', s_modelhint: '聊天走当前选中的模型;没配也能用,消息会先记到收件箱。',
+        opt_openai: 'OpenAI 格式', opt_anthropic: 'Anthropic 格式',
+        b_quit: '退出', b_back: '返回', b_save: '保存模型',
+        theme_origin: '赤金龙', theme_jade: '苍翠龙', theme_azure: '玄水龙', theme_violet: '紫霄龙', theme_ink: '暗夜龙', theme_sakura: '樱粉龙',
+        horn_pointed: '尖角', horn_antler: '鹿角', horn_flame: '火焰角', horn_forked: '分叉角', horn_curved: '弯角',
+        greet: '我在呢~说吧,我帮你记着、帮你办 ✨',
+        reply_ok: '记好啦~', file_unreadable: '这个文件我读不了', kind_file: '文件',
+        cfg_go: '去配置', ask: '嗯?是不是有什么事~ 点我说说 ✨',
+        matrx_new: '📨 Matrx 有新消息!', open_matrx: '打开 Matrx', ok_btn: '知道了', attn_default: '主人,Claude 在等你',
+        chat_later: '晚点', chat_talk: '聊聊', no_model: '还没有配置模型',
+        need_fields: '名称、地址、模型ID 都要填哦', model_saved: n => `模型「${n}」已保存并启用 ✅`,
+        clip_shot: '剪贴板截图', key_keep: 'API Key(留空=不改)',
+        sq: ['喝水了嘛?起来动一动 💧', '有什么要记的吗?', '刚闪过的想法要记下来吗?', '现在最挂心啥呀?', '上午的事顺利吗?'],
+      },
+    };
+    let lang = 'en';
+    const t = k => { const v = (I18N[lang] || I18N.en)[k]; return v !== undefined ? v : (I18N.en[k] !== undefined ? I18N.en[k] : k); };
+    function applyI18n() {
+      document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+      document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+      document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+      document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); });
+      const sel = $('lang-sel'); if (sel) sel.value = lang;
+      setPetName((config && config.petName) || '');
+      renderThemes(); if (document.getElementById('parts')) renderParts(); renderModels();
+    }
+    function setLang(l) { lang = (l === 'zh') ? 'zh' : 'en'; applyI18n(); }
 
     /* ---------- 主题 ---------- */
     const THEMES = [
@@ -204,7 +266,7 @@
     }
     function applyParts(parts) { if (parts && parts.horns) applyHorns(parts.horns); }
     function setPetName(n) {
-      const el = document.querySelector('#card-head .name'); if (el) el.textContent = n || '小龙';
+      const el = document.querySelector('#card-head .name'); if (el) el.textContent = n || t('name_default');
       const inp = document.getElementById('petname-input'); if (inp && document.activeElement !== inp) inp.value = n || '';
     }
     function renderParts() {
@@ -214,8 +276,8 @@
       for (const s of HORN_STYLES) {
         const prev = s.svg.replace(/url\(#gGold\)/g, '#F5C542');   // 预览里没有渐变定义,用纯金色
         const b = document.createElement('div'); b.className = 'part-opt' + (s.id === curHorn ? ' active' : '');
-        b.title = s.name;
-        b.innerHTML = '<svg viewBox="95 0 210 100">' + prev + '<g transform="translate(400,0) scale(-1,1)">' + prev + '</g></svg><span>' + s.name + '</span>';
+        const hn = t('horn_' + s.id); b.title = hn;
+        b.innerHTML = '<svg viewBox="95 0 210 100">' + prev + '<g transform="translate(400,0) scale(-1,1)">' + prev + '</g></svg><span>' + hn + '</span>';
         b.onclick = () => { applyHorns(s.id); toNative({ type: 'setPart', part: 'horns', style: s.id }); };
         row.appendChild(b);
       }
@@ -253,7 +315,7 @@
       const box = $('themes'); if (!box) return; box.innerHTML = '';
       for (const th of THEMES) {
         const s = document.createElement('div'); s.className = 'sw' + (th.id === curTheme ? ' active' : '');
-        s.style.background = th.swatch; s.title = th.name; s.innerHTML = '<span>' + th.name + '</span>';
+        const tn = t('theme_' + th.id); s.style.background = th.swatch; s.title = tn; s.innerHTML = '<span>' + tn + '</span>';
         s.onclick = () => { applyTheme(th.id); toNative({ type: 'setTheme', theme: th.id }); };
         box.appendChild(s);
       }
@@ -267,34 +329,34 @@
         case 'reply':
           busy = false; sendbtn.disabled = false;
           if (D()) D().playGesture('happy');
-          if (body.classList.contains('chat')) { removeTyping(); addMsg('pet', msg.text || '记好啦~'); }
-          else showBubble(msg.text || '记好啦~', {});
+          if (body.classList.contains('chat')) { removeTyping(); addMsg('pet', msg.text || t('reply_ok')); }
+          else showBubble(msg.text || t('reply_ok'), {});
           break;
         case 'error':
           busy = false; sendbtn.disabled = false;
           removeTyping();
           if (body.classList.contains('chat')) addMsg('pet', msg.text);
-          else showBubble(msg.text, { actions: msg.needConfig ? [{ label: '去配置', primary: true, onClick: () => { enterChat(); openSettings(); } }] : null });
+          else showBubble(msg.text, { actions: msg.needConfig ? [{ label: t('cfg_go'), primary: true, onClick: () => { enterChat(); openSettings(); } }] : null });
           break;
         case 'tasks': pendingTasks = msg.items || []; break;
-        case 'attached': showChip(msg.kind || '文件', msg.name || ''); break;
-        case 'attachError': clearChip(); if (body.classList.contains('chat')) addMsg('pet', msg.text || '这个文件我读不了'); else showBubble(msg.text || '这个文件我读不了', {}); break;
+        case 'attached': showChip(msg.kind || t('kind_file'), msg.name || ''); break;
+        case 'attachError': clearChip(); if (body.classList.contains('chat')) addMsg('pet', msg.text || t('file_unreadable')); else showBubble(msg.text || t('file_unreadable'), {}); break;
         case 'motion': if (!sleeping && D()) D().setMotion(msg.state, msg.dir); break;
-        case 'config': config = msg; renderModels(); if (msg.theme) applyTheme(msg.theme); applyParts(msg.parts); if (msg.petName !== undefined) setPetName(msg.petName); { const st = $('still-toggle'); if (st) st.checked = !!msg.stayStill; } break;
+        case 'config': config = msg; if (msg.lang) setLang(msg.lang); renderModels(); if (msg.theme) applyTheme(msg.theme); applyParts(msg.parts); if (msg.petName !== undefined) setPetName(msg.petName); { const st = $('still-toggle'); if (st) st.checked = !!msg.stayStill; } break;
         case 'hover':
           if (sleeping || body.classList.contains('chat')) break;
-          if (msg.on) showBubble('嗯?是不是有什么事~ 点我说说 ✨', { ttl: 0 });
+          if (msg.on) showBubble(t('ask'), { ttl: 0 });
           else hideBubble();
           break;
         case 'matrxNew':
           if (D()) { D().poke && D().poke(); D().setMotion('jump', 1); }
-          if (body.classList.contains('chat')) addMsg('pet', '📨 Matrx 有新消息!');
-          else showBubble('📨 Matrx 有新消息!', { ttl: 15000, actions: [{ label: '打开 Matrx', primary: true, onClick: () => toNative({ type: 'openMatrx' }) }, { label: '知道了', onClick: () => {} }] });
+          if (body.classList.contains('chat')) addMsg('pet', t('matrx_new'));
+          else showBubble(t('matrx_new'), { ttl: 15000, actions: [{ label: t('open_matrx'), primary: true, onClick: () => toNative({ type: 'openMatrx' }) }, { label: t('ok_btn'), onClick: () => {} }] });
           break;
         case 'attn':   // 外部提醒(如 Claude 在等你授权/已完成)
           if (D()) { D().poke && D().poke(); D().setMotion('jump', 1); }
-          if (body.classList.contains('chat')) addMsg('pet', msg.text || '主人,Claude 在等你');
-          else showBubble(msg.text || '主人,Claude 在等你', { ttl: 20000, actions: [{ label: '知道了', onClick: () => {} }] });
+          if (body.classList.contains('chat')) addMsg('pet', msg.text || t('attn_default'));
+          else showBubble(msg.text || t('attn_default'), { ttl: 20000, actions: [{ label: t('ok_btn'), onClick: () => {} }] });
           break;
       }
     };
@@ -357,7 +419,7 @@
     function enterChat() {
       if (body.classList.contains('chat')) return;
       body.classList.add('chat'); toNative({ type: 'setMode', mode: 'chat' });
-      if (!messages.childElementCount) addMsg('pet', '我在呢~说吧,我帮你记着、帮你办 ✨');
+      if (!messages.childElementCount) addMsg('pet', t('greet'));
       setTimeout(() => input.focus(), 150);
     }
     function exitChat() {
@@ -395,7 +457,7 @@
         if (it.type && it.type.indexOf('image') === 0) {
           const file = it.getAsFile(); if (!file) continue;
           const r = new FileReader();
-          r.onload = () => toNative({ type: 'pasteImage', dataURL: r.result, name: '剪贴板截图.' + (it.type.split('/')[1] || 'png') });
+          r.onload = () => toNative({ type: 'pasteImage', dataURL: r.result, name: t('clip_shot') + '.' + (it.type.split('/')[1] || 'png') });
           r.readAsDataURL(file);
           e.preventDefault();
           return;
@@ -409,7 +471,7 @@
       addMsg('me', text + (attachName ? '  📎' + attachName : '')); addTyping(); if (D()) D().poke();
       clearChip();
       if (inNative) toNative({ type: 'chat', text });
-      else setTimeout(() => window.petReceive({ type: 'reply', text: '(预览)记下啦:' + text }), 900);
+      else setTimeout(() => window.petReceive({ type: 'reply', text: (lang === 'zh' ? '(预览)记下啦:' : '(preview) noted: ') + text }), 900);
     }
     sendbtn.onclick = sendChat;
     // 回车发送,但输入法(拼音等)正在组字时不发送 —— isComposing / keyCode 229 都挡一道
@@ -429,38 +491,40 @@
     $('c-color').oninput = () => { applyTheme($('c-color').value); toNative({ type: 'setTheme', theme: $('c-color').value }); };
     $('petname-input').onchange = () => { const n = $('petname-input').value.trim(); setPetName(n); toNative({ type: 'setPetName', name: n }); };
     $('still-toggle').onchange = () => toNative({ type: 'setStill', on: $('still-toggle').checked });
+    $('lang-sel').onchange = () => { setLang($('lang-sel').value); toNative({ type: 'setLang', lang }); };
     $('m-back').onclick = () => settings.classList.remove('show');
     function renderModels() {
       const list = $('model-list'); if (!list) return; list.innerHTML = '';
-      if (!config.models.length) { list.innerHTML = '<div class="hint">还没有配置模型</div>'; return; }
+      if (!config.models.length) { list.innerHTML = '<div class="hint">' + t('no_model') + '</div>'; return; }
       for (const m of config.models) {
         const div = document.createElement('div'); div.className = 'model-item' + (m.name === config.active ? ' active' : '');
         const radio = document.createElement('span'); radio.textContent = m.name === config.active ? '🟠' : '⚪️'; radio.style.cursor = 'pointer';
         radio.onclick = () => toNative({ type: 'selectModel', name: m.name });
         const name = document.createElement('span'); name.className = 'name'; name.textContent = `${m.name}(${m.model})`;
         const edit = document.createElement('button'); edit.textContent = '✏️';
-        edit.onclick = () => { $('m-name').value = m.name; $('m-format').value = m.format || 'openai'; $('m-model').value = m.model; $('m-url').value = m.baseURL; $('m-key').value = ''; $('m-key').placeholder = 'API Key(留空=不改)'; };
+        edit.onclick = () => { $('m-name').value = m.name; $('m-format').value = m.format || 'openai'; $('m-model').value = m.model; $('m-url').value = m.baseURL; $('m-key').value = ''; $('m-key').placeholder = t('key_keep'); };
         const del = document.createElement('button'); del.textContent = '🗑'; del.onclick = () => toNative({ type: 'deleteModel', name: m.name });
         div.append(radio, name, edit, del); list.appendChild(div);
       }
     }
     $('m-save').onclick = () => {
       const m = { name: $('m-name').value.trim(), format: $('m-format').value, model: $('m-model').value.trim(), baseURL: $('m-url').value.trim(), apiKey: $('m-key').value.trim() };
-      if (!m.name || !m.baseURL || !m.model) { addMsg('pet', '名称、地址、模型ID 都要填哦'); return; }
+      if (!m.name || !m.baseURL || !m.model) { addMsg('pet', t('need_fields')); return; }
       if (inNative) toNative({ type: 'saveModel', model: m });
       else { config.models = config.models.filter(x => x.name !== m.name).concat(m); config.active = m.name; renderModels(); }
-      addMsg('pet', `模型「${m.name}」已保存并启用 ✅`); $('m-key').value = '';
+      addMsg('pet', t('model_saved')(m.name)); $('m-key').value = '';
     };
 
     /* ---------- 偶尔弹小问题(仅待机) ---------- */
-    const SQ = ['喝水了嘛?起来动一动 💧', '有什么要记的吗?', '刚闪过的想法要记下来吗?', '现在最挂心啥呀?', '上午的事顺利吗?'];
     function popQuestion() {
       if (sleeping || busy || body.classList.contains('chat')) return;
-      let q, act = '聊聊';
-      if (pendingTasks.length && Math.random() < .4) q = '「' + pendingTasks[Math.floor(Math.random() * pendingTasks.length)].slice(0, 30) + '」今天要动一动吗?';
-      else q = SQ[Math.floor(Math.random() * SQ.length)];
+      const SQ = t('sq'); let q;
+      if (pendingTasks.length && Math.random() < .4) {
+        const task = pendingTasks[Math.floor(Math.random() * pendingTasks.length)].slice(0, 30);
+        q = lang === 'zh' ? ('「' + task + '」今天要动一动吗?') : ('Want to make progress on “' + task + '” today?');
+      } else q = SQ[Math.floor(Math.random() * SQ.length)];
       if (D()) D().poke();
-      showBubble(q, { ttl: 20000, actions: [{ label: act, primary: true, onClick: enterChat }, { label: '晚点', onClick: () => {} }] });
+      showBubble(q, { ttl: 20000, actions: [{ label: t('chat_talk'), primary: true, onClick: enterChat }, { label: t('chat_later'), onClick: () => {} }] });
     }
     (function loop() { setTimeout(() => { popQuestion(); loop(); }, DEMO ? 15000 : (35 + Math.random() * 35) * 60000); })();
 
@@ -468,6 +532,7 @@
       const states = [['walk', 1], ['idle', 1], ['run', -1], ['jump', -1], ['walk', -1], ['idle', -1]]; let i = 0;
       setTimeout(() => setInterval(() => { if (!body.classList.contains('chat') && D()) D().setMotion(...states[i++ % states.length]); }, 2800), 900);
     }
+    applyI18n();   // 先按默认英文渲染一遍(config 到达后若带 lang 会再切)
     setTimeout(() => { renderThemes(); toNative({ type: 'ready' }); }, 700);
     window.__pet = { state: () => ({ sleeping, busy, chat: body.classList.contains('chat'), dragon: !!D() }) };
   })();
