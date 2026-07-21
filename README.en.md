@@ -41,6 +41,8 @@ Then open the dragon → ⚙️ Settings:
 3. (Optional) pick a theme color and horn style.
 4. (Optional) branch reports: list the GitLab repos to track in `skills/branch-report/data/repos.txt`.
 
+**Auto-start at login** (optional): `cd pet-app && ./autostart.sh` — installs a LaunchAgent so the pet launches when you log in (`./autostart.sh off` to disable). No more disappearing after a reboot.
+
 > You can also drive it from a Claude Code session in this folder (`cd ~/Desktop/PetAssistant && claude`).
 
 ## Built-in skills & usage

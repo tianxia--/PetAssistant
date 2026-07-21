@@ -41,6 +41,8 @@ mem/.venv/bin/pip install -r mem/requirements.txt
 3. (可选)选主题颜色、龙角样式。
 4. (可选)分支日报:把要跟踪的 GitLab 仓库填进 `skills/branch-report/data/repos.txt`。
 
+**开机自启**(可选):`cd pet-app && ./autostart.sh` —— 登录时自动拉起二蛋(装一个 LaunchAgent,`./autostart.sh off` 关闭)。重启电脑不再消失。
+
 > 也可以在本目录开 Claude Code 会话来驱动它(`cd ~/Desktop/PetAssistant && claude`)。
 
 ## 内置技能 & 使用流程
