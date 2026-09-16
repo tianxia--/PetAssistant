@@ -18,7 +18,7 @@
 
 ## Features
 - **Desktop pet**: paces along the screen edge, idle gestures, theme recoloring, swappable dragon horns; slide your cursor onto it and it stops to ask "what's up?", and it arcs over a resting cursor in its path; a "stay still" mode (in ⚙️) keeps it in place instead of wandering
-- **Chat brain**: plug in your own LLM (OpenAI / Anthropic API format), with multi-turn context; replies render as Markdown
+- **Chat brain**: plug in your own LLM (OpenAI / Anthropic API format), with multi-turn context; replies render as Markdown. You can also borrow a CLI you're already logged into on this machine (`claude` / `pi`) — no endpoint, no API key, no extra billing
 - **Memory**: local vector memory (bilingual CN/EN, hybrid semantic + keyword search) that learns you over time
 - **File analysis**: documents (pdf / word / txt / code / logs) and images (screenshots) via 📎 picker / drag-drop / Cmd+V paste
 - **Skill mounting**: Claude Agent Skills format (`SKILL.md`) — drop a skill folder into `skills/` and restart; standard skills from Claude or the web work directly
@@ -37,6 +37,7 @@ mem/.venv/bin/pip install -r mem/requirements.txt
 ```
 Then open the dragon → ⚙️ Settings:
 1. **Configure a model**: your LLM endpoint (URL / model ID / API key). It works without one too — messages are logged to the inbox first.
+   - Or pick **"Local Claude / pi (logged in)"** in the format dropdown: the pet shells out to that CLI and reuses the session you already logged in with, so the endpoint and key fields disappear. Nothing is read from your credential store — the CLI is invoked as-is. Costs one cold start per reply (~4–8s).
 2. **Name it**: give it a name under "🐣 Name". (Switch UI language under "🌐 Language" — default English.)
 3. (Optional) pick a theme color and horn style.
 4. (Optional) branch reports: list the GitLab repos to track in `skills/branch-report/data/repos.txt`.

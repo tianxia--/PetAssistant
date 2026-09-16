@@ -46,9 +46,12 @@ final class DraggableWebView: WKWebView {
     }
     private var dragged = false
     private var totalMove: CGFloat = 0
+    var chatMode = false        // 对话时:只有从顶部标题栏按下才拖窗口,正文区留给选中复制
     override func mouseDown(with event: NSEvent) { initialLocation = event.locationInWindow; dragged = false; totalMove = 0; super.mouseDown(with: event) }
     override func mouseDragged(with event: NSEvent) {
         guard let window, let initial = initialLocation else { super.mouseDragged(with: event); return }
+        // 对话态且按下点不在顶部标题栏(约 52pt)→ 不拖窗口,让用户在消息/设置区选文字
+        if chatMode, initial.y < window.frame.height - 52 { super.mouseDragged(with: event); return }
         let cur = event.locationInWindow
         let dx = cur.x - initial.x, dy = cur.y - initial.y
         totalMove += abs(dx) + abs(dy)
@@ -235,6 +238,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     func setWindowMode(_ mode: String) {
         chatMode = (mode == "chat")
         paused = chatMode
+        webView.chatMode = chatMode
         let target = chatMode ? chatSize : idleSize
         guard let vf = NSScreen.main?.visibleFrame else { return }
         let f = window.frame
@@ -356,10 +360,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             uiLang = ((b["lang"] as? String) == "zh") ? "zh" : "en"
             mutateConfig { $0["lang"] = self.uiLang }
         case "bubbleH": setBubbleRoom(CGFloat((b["h"] as? NSNumber)?.doubleValue ?? 0))
+        case "copyText":
+            if let s = b["text"] as? String { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(s, forType: .string) }
         case "openMatrx": NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications/Matrx.app"))
         case "quit": stopMemService(); NSApp.terminate(nil)
         case "getConfig": sendConfig()
         case "saveModel": if let m = b["model"] as? [String: String] { saveModel(m) }
+        case "cliStatus":
+            if let tool = b["cli"] as? String {
+                DispatchQueue.global().async { [weak self] in                      // resolveCLI 可能要问登录 shell,别卡住界面
+                    guard let self else { return }
+                    self.send(["type": "cliStatus", "cli": tool, "found": self.resolveCLI(tool) != nil])
+                }
+            }
         case "selectModel": if let name = b["name"] as? String { mutateConfig { $0["active"] = name }; sendConfig() }
         case "deleteModel":
             if let name = b["name"] as? String {
@@ -527,7 +540,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
             guard let self else { return }
             self.appendLine("- [\(self.now("yyyy-MM-dd HH:mm"))] \(text)", to: inboxFile)   // 永不丢话
             self.logChat("👤 用户: \(text)")
-            guard let m = self.activeModel(), !((m["apiKey"] ?? "").isEmpty) else {
+            guard let m = self.activeModel(), m["format"] == "cli" || !((m["apiKey"] ?? "").isEmpty) else {
                 self.logChat("⚠️ 未配置模型,仅记入收件箱")
                 self.send(["type": "error", "needConfig": true,
                            "text": uiLang == "zh" ? "记到收件箱啦~还没配置模型,点 ⚙️ 配一个我就能聊天+干活了" : "Saved to your inbox~ no model configured yet — set one in ⚙️ and I can chat + do things"]); return
@@ -714,9 +727,60 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
         }.joined(separator: "\n")
     }
 
-    // 通用模型调用(OpenAI / Anthropic 格式)。content 可为 String 或结构化数组(带图片)。
+    // 找本机 CLI 的绝对路径(.app 启动时 PATH 很小,得自己找)
+    func resolveCLI(_ name: String) -> String? {
+        let home = NSHomeDirectory()
+        let cands = ["\(home)/.local/bin/\(name)", "\(home)/.npm-global/bin/\(name)", "\(home)/.bun/bin/\(name)",
+                     "/opt/homebrew/bin/\(name)", "/usr/local/bin/\(name)"]
+        if let hit = cands.first(where: { FileManager.default.isExecutableFile(atPath: $0) }) { return hit }
+        let (out, code) = runProc(["/bin/zsh", "-lc", "which \(name)"], stdin: nil)   // 兜底:问登录 shell 要
+        let p = out.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (code == 0 && p.hasPrefix("/") && FileManager.default.isExecutableFile(atPath: p)) ? p : nil
+    }
+    // 结构化 content(带图片那种)取纯文本部分
+    func textOf(_ content: Any?) -> String {
+        if let s = content as? String { return s }
+        if let arr = content as? [[String: Any]] {
+            return arr.compactMap { ($0["type"] as? String) == "text" ? $0["text"] as? String : nil }.joined(separator: "\n")
+        }
+        return ""
+    }
+    // 借本机已登录的 CLI(claude / pi)当大脑,不碰任何凭证
+    func chatViaCLI(_ m: [String: String], _ messages: [[String: Any]]) -> (String?, String?) {
+        let tool = m["cli"] ?? "claude"
+        guard let bin = resolveCLI(tool) else { return (nil, "没找到 \(tool) 命令,先装好并登录") }
+        let sys = (messages.first { ($0["role"] as? String) == "system" }?["content"] as? String) ?? ""
+        let convo = messages.filter { ($0["role"] as? String) != "system" }.map { msg -> String in
+            let who = (msg["role"] as? String) == "assistant" ? "助手" : "用户"
+            return "\(who):\(textOf(msg["content"]))"
+        }.joined(separator: "\n\n")
+        var argv: [String]
+        if tool == "claude" {
+            argv = [bin, "-p", convo, "--system-prompt", sys, "--allowedTools", "", "--output-format", "json"]
+        } else {
+            argv = [bin, "-p", sys.isEmpty ? convo : sys + "\n\n---\n\n" + convo]   // pi 没有独立的 system 参数
+        }
+        if let id = m["model"], !id.isEmpty { argv += ["--model", id] }
+        // .app 是被 launchd 拉起来的,环境可能很干净;少了 USER,claude 读不到钥匙串里的凭证
+        var env = ProcessInfo.processInfo.environment
+        if (env["HOME"] ?? "").isEmpty { env["HOME"] = NSHomeDirectory() }
+        if (env["USER"] ?? "").isEmpty { env["USER"] = NSUserName() }
+        if (env["PATH"] ?? "").isEmpty { env["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin" }
+        let (out, code) = runProc(argv, stdin: nil, env: env)
+        let t = out.trimmingCharacters(in: .whitespacesAndNewlines)
+        if t.isEmpty { return (nil, "\(tool) 没有输出(退出码 \(code))") }
+        guard tool == "claude" else { return code == 0 ? (t, nil) : (nil, String(t.suffix(300))) }
+        // claude 未登录/出错时退出码仍是 0,得看 JSON 里的 is_error
+        guard let o = try? JSONSerialization.jsonObject(with: Data(t.utf8)) as? [String: Any],
+              let text = o["result"] as? String else { return (nil, "claude 返回无法解析:" + String(t.prefix(200))) }
+        if (o["is_error"] as? Bool) == true { return (nil, text) }
+        return (text, nil)
+    }
+
+    // 通用模型调用(OpenAI / Anthropic / 本机 CLI)。content 可为 String 或结构化数组(带图片)。
     func chat(_ messages: [[String: Any]]) -> (String?, String?) {
         guard let m = activeModel() else { return (nil, "未配置模型") }
+        if (m["format"] ?? "openai") == "cli" { return chatViaCLI(m, messages) }
         let base = (m["baseURL"] ?? "").trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
         guard !base.isEmpty, let key = m["apiKey"], !key.isEmpty else { return (nil, "模型信息不完整") }
         var req: URLRequest
@@ -811,11 +875,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKScriptMessageHandler
     }
 
     // 运行子进程(可指定工作目录;继承登录环境的 PATH/凭证)
-    func runProc(_ argv: [String], stdin: String?, cwd: String? = nil) -> (String, Int32) {
+    func runProc(_ argv: [String], stdin: String?, cwd: String? = nil, env: [String: String]? = nil) -> (String, Int32) {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: argv[0])
         p.arguments = Array(argv.dropFirst())
         if let cwd { p.currentDirectoryURL = URL(fileURLWithPath: cwd) }
+        if let env { p.environment = env }
         let out = Pipe(); p.standardOutput = out; p.standardError = out
         let inp = Pipe(); p.standardInput = inp
         do { try p.run() } catch { return ("启动失败", -1) }

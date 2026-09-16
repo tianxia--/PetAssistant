@@ -44,8 +44,14 @@
 
   #messages { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 7px; }
   .msg { max-width: 84%; padding: 7px 10px; border-radius: 12px; font-size: 12.5px; line-height: 1.5; word-break: break-word; }
+  /* 可选中复制:pet 消息内容是渲染后的 HTML,子元素也要覆盖全局的 user-select:none */
+  .msg, .msg * { -webkit-user-select: text; user-select: text; cursor: text; }
   .msg.me { align-self: flex-end; background: #f2994c; color: #fff; border-bottom-right-radius: 4px; }
-  .msg.pet { align-self: flex-start; background: #f3ede2; color: #4a3428; border-bottom-left-radius: 4px; }
+  .msg.pet { align-self: flex-start; background: #f3ede2; color: #4a3428; border-bottom-left-radius: 4px; position: relative; padding-right: 26px; }
+  .msg.pet .copybtn { position: absolute; top: 3px; right: 4px; border: none; background: transparent; cursor: pointer;
+    font-size: 12px; line-height: 1; padding: 2px; opacity: 0; transition: opacity .15s; -webkit-user-select: none; user-select: none; }
+  .msg.pet:hover .copybtn { opacity: .55; }
+  .msg.pet .copybtn:hover { opacity: 1; }
   .msg.pet.typing::after { content: "·"; animation: dots 1.2s steps(4) infinite; }
   @keyframes dots { 0%{content:""} 25%{content:"·"} 50%{content:"··"} 75%{content:"···"} }
   /* Markdown 渲染(宠物回复 / 气泡) */
@@ -142,11 +148,12 @@
       <div class="hint" data-i18n="s_modelhint">Chat uses the selected model; works without one too — messages go to the inbox first.</div>
       <input id="m-name" data-i18n-ph="ph_mname" placeholder="Name (e.g. My model)">
       <div class="row2">
-        <select id="m-format"><option value="openai" data-i18n="opt_openai">OpenAI format</option><option value="anthropic" data-i18n="opt_anthropic">Anthropic format</option></select>
+        <select id="m-format"><option value="openai" data-i18n="opt_openai">OpenAI format</option><option value="anthropic" data-i18n="opt_anthropic">Anthropic format</option><option value="cli:claude" data-i18n="opt_claudecli">Local Claude (logged in)</option><option value="cli:pi" data-i18n="opt_picli">Local pi (logged in)</option></select>
         <input id="m-model" data-i18n-ph="ph_mmodel" placeholder="Model ID">
       </div>
       <input id="m-url" data-i18n-ph="ph_murl" placeholder="Endpoint (e.g. https://.../v1)">
       <input id="m-key" data-i18n-ph="ph_mkey" placeholder="API Key" type="password">
+      <div class="hint" id="m-clistatus" style="display:none"></div>
       <div class="btns">
         <button id="btn-quit" class="danger" data-i18n="b_quit" data-i18n-title="t_quit" title="Quit the pet">Quit</button>
         <div class="right">
@@ -188,6 +195,11 @@
         s_parts: '🐲 Parts · Horns', s_move: '🚶 Movement', s_still: "Stay still (stay in place, don't wander)",
         s_model: '🧠 Model', s_modelhint: 'Chat uses the selected model; works without one too — messages go to the inbox first.',
         opt_openai: 'OpenAI format', opt_anthropic: 'Anthropic format',
+        opt_claudecli: 'Local Claude (logged in)', opt_picli: 'Local pi (logged in)',
+        ph_mmodel_opt: 'Model ID (optional)', cli_checking: 'Checking…',
+        cli_ok: c => `✅ Found ${c} — using the account you already logged in with, no key needed`,
+        cli_missing: c => `❌ ${c} not found. Install it and log in first.`,
+        need_name: 'Give it a name first',
         b_quit: 'Quit', b_back: 'Back', b_save: 'Save',
         theme_origin: 'Crimson', theme_jade: 'Jade', theme_azure: 'Azure', theme_violet: 'Violet', theme_ink: 'Midnight', theme_sakura: 'Sakura',
         horn_pointed: 'Pointed', horn_antler: 'Antler', horn_flame: 'Flame', horn_forked: 'Forked', horn_curved: 'Curved',
@@ -195,7 +207,7 @@
         reply_ok: 'Got it~', file_unreadable: "I can't read this file", kind_file: 'File',
         cfg_go: 'Configure', ask: "Hmm? Something on your mind~ click me ✨",
         matrx_new: '📨 New Matrx message!', open_matrx: 'Open Matrx', ok_btn: 'OK', attn_default: 'Hey, Claude needs you',
-        chat_later: 'Later', chat_talk: 'Chat', no_model: 'No model configured yet',
+        chat_later: 'Later', chat_talk: 'Chat', no_model: 'No model configured yet', copy: 'Copy',
         need_fields: 'Name, endpoint and model ID are all required', model_saved: n => `Model "${n}" saved & active ✅`,
         clip_shot: 'clipboard-shot', key_keep: 'API Key (blank = keep current)',
         sq: ['Had some water? Stretch a bit 💧', 'Anything to jot down?', 'Want to note that fleeting idea?', "What's on your mind right now?", 'How did the morning go?'],
@@ -210,6 +222,11 @@
         s_parts: '🐲 部件 · 角', s_move: '🚶 走动', s_still: '静止不动(待在原地,不到处走)',
         s_model: '🧠 模型配置', s_modelhint: '聊天走当前选中的模型;没配也能用,消息会先记到收件箱。',
         opt_openai: 'OpenAI 格式', opt_anthropic: 'Anthropic 格式',
+        opt_claudecli: '本机 Claude(已登录)', opt_picli: '本机 pi(已登录)',
+        ph_mmodel_opt: '模型ID(可不填)', cli_checking: '检测中…',
+        cli_ok: c => `✅ 找到 ${c} 了,直接借你已经登录好的账号,不用填 Key`,
+        cli_missing: c => `❌ 没找到 ${c},先装好并登录一次`,
+        need_name: '先给它起个名字',
         b_quit: '退出', b_back: '返回', b_save: '保存模型',
         theme_origin: '赤金龙', theme_jade: '苍翠龙', theme_azure: '玄水龙', theme_violet: '紫霄龙', theme_ink: '暗夜龙', theme_sakura: '樱粉龙',
         horn_pointed: '尖角', horn_antler: '鹿角', horn_flame: '火焰角', horn_forked: '分叉角', horn_curved: '弯角',
@@ -217,7 +234,7 @@
         reply_ok: '记好啦~', file_unreadable: '这个文件我读不了', kind_file: '文件',
         cfg_go: '去配置', ask: '嗯?是不是有什么事~ 点我说说 ✨',
         matrx_new: '📨 Matrx 有新消息!', open_matrx: '打开 Matrx', ok_btn: '知道了', attn_default: '主人,Claude 在等你',
-        chat_later: '晚点', chat_talk: '聊聊', no_model: '还没有配置模型',
+        chat_later: '晚点', chat_talk: '聊聊', no_model: '还没有配置模型', copy: '复制',
         need_fields: '名称、地址、模型ID 都要填哦', model_saved: n => `模型「${n}」已保存并启用 ✅`,
         clip_shot: '剪贴板截图', key_keep: 'API Key(留空=不改)',
         sq: ['喝水了嘛?起来动一动 💧', '有什么要记的吗?', '刚闪过的想法要记下来吗?', '现在最挂心啥呀?', '上午的事顺利吗?'],
@@ -343,6 +360,7 @@
         case 'attachError': clearChip(); if (body.classList.contains('chat')) addMsg('pet', msg.text || t('file_unreadable')); else showBubble(msg.text || t('file_unreadable'), {}); break;
         case 'motion': if (!sleeping && D()) D().setMotion(msg.state, msg.dir); break;
         case 'config': config = msg; if (msg.lang) setLang(msg.lang); renderModels(); if (msg.theme) applyTheme(msg.theme); applyParts(msg.parts); if (msg.petName !== undefined) setPetName(msg.petName); { const st = $('still-toggle'); if (st) st.checked = !!msg.stayStill; } break;
+        case 'cliStatus': { const box = $('m-clistatus'); if (box) box.textContent = t(msg.found ? 'cli_ok' : 'cli_missing')(msg.cli); break; }
         case 'hover':
           if (sleeping || body.classList.contains('chat')) break;
           if (msg.on) showBubble(t('ask'), { ttl: 0 });
@@ -407,9 +425,19 @@
     /* ---------- 消息 ---------- */
     function addMsg(who, text) {
       const d = document.createElement('div'); d.className = 'msg ' + who;
-      if (who.indexOf('pet') === 0 && text) { d.classList.add('md'); d.innerHTML = renderMD(text); }
-      else d.textContent = text;
+      if (who.indexOf('pet') === 0 && text) {
+        d.classList.add('md'); d.innerHTML = renderMD(text);
+        const cp = document.createElement('button'); cp.className = 'copybtn'; cp.textContent = '📋'; cp.title = t('copy');
+        cp.onmousedown = e => e.stopPropagation();
+        cp.onclick = () => copyText(text, cp);
+        d.appendChild(cp);
+      } else d.textContent = text;
       messages.appendChild(d); messages.scrollTop = messages.scrollHeight; return d;
+    }
+    function copyText(s, btn) {
+      toNative({ type: 'copyText', text: s });                                  // 原生写系统剪贴板(最可靠)
+      if (navigator.clipboard) navigator.clipboard.writeText(s).catch(() => {}); // 浏览器预览兜底
+      if (btn) { btn.textContent = '✓'; setTimeout(() => { btn.textContent = '📋'; }, 1200); }
     }
     let typingEl = null;
     function addTyping() { removeTyping(); typingEl = addMsg('pet typing', ''); }
@@ -500,16 +528,27 @@
         const div = document.createElement('div'); div.className = 'model-item' + (m.name === config.active ? ' active' : '');
         const radio = document.createElement('span'); radio.textContent = m.name === config.active ? '🟠' : '⚪️'; radio.style.cursor = 'pointer';
         radio.onclick = () => toNative({ type: 'selectModel', name: m.name });
-        const name = document.createElement('span'); name.className = 'name'; name.textContent = `${m.name}(${m.model})`;
+        const name = document.createElement('span'); name.className = 'name'; name.textContent = `${m.name}(${m.model || m.cli || ''})`;
         const edit = document.createElement('button'); edit.textContent = '✏️';
-        edit.onclick = () => { $('m-name').value = m.name; $('m-format').value = m.format || 'openai'; $('m-model').value = m.model; $('m-url').value = m.baseURL; $('m-key').value = ''; $('m-key').placeholder = t('key_keep'); };
+        edit.onclick = () => { $('m-name').value = m.name; $('m-format').value = m.format === 'cli' ? 'cli:' + (m.cli || 'claude') : (m.format || 'openai'); $('m-model').value = m.model; $('m-url').value = m.baseURL; $('m-key').value = ''; $('m-key').placeholder = t('key_keep'); syncFormatFields(); };
         const del = document.createElement('button'); del.textContent = '🗑'; del.onclick = () => toNative({ type: 'deleteModel', name: m.name });
         div.append(radio, name, edit, del); list.appendChild(div);
       }
     }
+    // 选「本机 CLI」时不需要地址/Key,借的是你已经登录好的命令行
+    function syncFormatFields() {
+      const isCli = $('m-format').value.startsWith('cli:');
+      for (const id of ['m-url', 'm-key']) $(id).style.display = isCli ? 'none' : '';
+      $('m-model').placeholder = isCli ? t('ph_mmodel_opt') : t('ph_mmodel');
+      const box = $('m-clistatus'); box.style.display = isCli ? '' : 'none';
+      if (isCli) { box.textContent = t('cli_checking'); toNative({ type: 'cliStatus', cli: $('m-format').value.split(':')[1] }); }
+    }
+    $('m-format').onchange = syncFormatFields;
     $('m-save').onclick = () => {
-      const m = { name: $('m-name').value.trim(), format: $('m-format').value, model: $('m-model').value.trim(), baseURL: $('m-url').value.trim(), apiKey: $('m-key').value.trim() };
-      if (!m.name || !m.baseURL || !m.model) { addMsg('pet', t('need_fields')); return; }
+      const fmt = $('m-format').value, isCli = fmt.startsWith('cli:');
+      const m = { name: $('m-name').value.trim(), format: isCli ? 'cli' : fmt, cli: isCli ? fmt.split(':')[1] : '',
+                  model: $('m-model').value.trim(), baseURL: $('m-url').value.trim(), apiKey: $('m-key').value.trim() };
+      if (!m.name || (!isCli && (!m.baseURL || !m.model))) { addMsg('pet', t(isCli ? 'need_name' : 'need_fields')); return; }
       if (inNative) toNative({ type: 'saveModel', model: m });
       else { config.models = config.models.filter(x => x.name !== m.name).concat(m); config.active = m.name; renderModels(); }
       addMsg('pet', t('model_saved')(m.name)); $('m-key').value = '';
